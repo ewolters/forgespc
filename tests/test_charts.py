@@ -125,3 +125,37 @@ class TestSummary:
     def test_summary_range(self, stable_data):
         s = calculate_summary(stable_data)
         assert abs(s.range_val - (s.max_val - s.min_val)) < 0.001
+
+
+class TestUChart:
+    def test_basic_u_chart(self):
+        from forgespc.charts import u_chart
+        defects = [3, 5, 2, 7, 4, 6, 3, 8, 2, 5]
+        units = [10.0, 12.0, 8.0, 15.0, 10.0, 11.0, 9.0, 14.0, 7.0, 13.0]
+        result = u_chart(defects, units)
+        assert result.chart_type == "u"
+        assert result.limits.cl > 0
+        assert len(result.data_points) == 10
+
+    def test_u_chart_variable_sizes(self):
+        from forgespc.charts import u_chart
+        defects = [2, 10, 3]
+        units = [5.0, 50.0, 5.0]
+        result = u_chart(defects, units)
+        assert result.limits.cl > 0
+
+
+class TestNPChart:
+    def test_basic_np_chart(self):
+        from forgespc.charts import np_chart
+        defectives = [3, 5, 2, 7, 4, 6, 3, 8, 2, 5]
+        result = np_chart(defectives, sample_size=100)
+        assert result.chart_type == "np"
+        assert result.limits.cl > 0
+        assert len(result.data_points) == 10
+
+    def test_np_chart_in_control(self):
+        from forgespc.charts import np_chart
+        defectives = [4, 5, 4, 5, 4, 5, 4, 5, 4, 5]
+        result = np_chart(defectives, sample_size=100)
+        assert result.in_control

@@ -596,3 +596,210 @@ def _generate_grr_plots(data_array, unique_parts, unique_operators, pct_contribu
         "by_operator": by_operator_chart,
         "interaction": interaction_chart,
     }
+
+
+def gage_rr_nested(
+    measurements: list[list[list[float]]],
+    part_labels: list[str] | None = None,
+    operator_labels: list[str] | None = None,
+) -> "GageRRResult":
+    """Nested (hierarchical) Gage R&R.
+
+    Used when each operator measures DIFFERENT parts (not the same parts).
+    Common in destructive testing where the part is consumed.
+
+    Args:
+        measurements: [operator][part][replicate] — 3D array
+            Each operator measures their own set of parts.
+        part_labels: optional part identifiers
+        operator_labels: optional operator identifiers
+
+    Returns:
+        GageRRResult with variance components
+    """
+    import numpy as np
+
+    n_operators = len(measurements)
+    n_parts_per_operator = len(measurements[0])
+    n_replicates = len(measurements[0][0])
+
+    # Flatten for grand statistics
+    all_values = []
+    for op in measurements:
+        for part in op:
+            all_values.extend(part)
+    grand_mean = np.mean(all_values)
+    N = len(all_values)
+
+    # Compute SS
+    # SS_operator (between operators)
+    operator_means = []
+    for op in measurements:
+        op_vals = [v for part in op for v in part]
+        operator_means.append(np.mean(op_vals))
+
+    n_per_operator = n_parts_per_operator * n_replicates
+    ss_operator = n_per_operator * sum((m - grand_mean) ** 2 for m in operator_means)
+
+    # SS_parts(operator) — parts nested within operators
+    ss_parts_within = 0
+    part_means_all = []
+    for op_idx, op in enumerate(measurements):
+        for part in op:
+            part_mean = np.mean(part)
+            part_means_all.append(part_mean)
+            ss_parts_within += n_replicates * (part_mean - operator_means[op_idx]) ** 2
+
+    # SS_repeatability (within part replicates)
+    ss_repeat = 0
+    for op in measurements:
+        for part in op:
+            part_mean = np.mean(part)
+            for val in part:
+                ss_repeat += (val - part_mean) ** 2
+
+    # Degrees of freedom
+    df_operator = n_operators - 1
+    df_parts = n_operators * (n_parts_per_operator - 1)
+    df_repeat = n_operators * n_parts_per_operator * (n_replicates - 1)
+
+    # Mean squares
+    ms_operator = ss_operator / df_operator if df_operator > 0 else 0
+    ms_parts = ss_parts_within / df_parts if df_parts > 0 else 0
+    ms_repeat = ss_repeat / df_repeat if df_repeat > 0 else 0
+
+    # Variance components
+    var_repeat = ms_repeat
+    var_parts = max(0, (ms_parts - ms_repeat) / n_replicates)
+    var_operator = max(0, (ms_operator - ms_parts) / (n_parts_per_operator * n_replicates))
+
+    var_gage = var_repeat + var_operator  # reproducibility + repeatability
+    var_total = var_gage + var_parts
+
+    pct_gage = (var_gage / var_total * 100) if var_total > 0 else 0
+    pct_repeat = (var_repeat / var_total * 100) if var_total > 0 else 0
+    pct_operator = (var_operator / var_total * 100) if var_total > 0 else 0
+    pct_parts = (var_parts / var_total * 100) if var_total > 0 else 0
+
+    import math as _m
+    grr_pct = _m.sqrt(var_gage / var_total) * 100 if var_total > 0 else 0
+    ndc = max(1, int(1.41 * _m.sqrt(var_parts / var_gage))) if var_gage > 0 else 0
+
+    if grr_pct < 10:
+        assessment = "Acceptable"
+    elif grr_pct < 30:
+        assessment = "Marginal"
+    else:
+        assessment = "Unacceptable"
+
+    return GageRRResult(
+        var_repeatability=round(var_repeat, 6),
+        var_reproducibility=round(var_operator, 6),
+        var_operator=round(var_operator, 6),
+        var_interaction=0.0,  # nested design has no interaction term
+        var_grr=round(var_gage, 6),
+        var_part=round(var_parts, 6),
+        var_total=round(var_total, 6),
+        pct_contribution={
+            "gage_rr": round(pct_gage, 2),
+            "repeatability": round(pct_repeat, 2),
+            "reproducibility": round(pct_operator, 2),
+            "part_to_part": round(pct_parts, 2),
+        },
+        pct_study_var={
+            "gage_rr": round(grr_pct, 2),
+            "repeatability": round(_m.sqrt(var_repeat / var_total) * 100 if var_total > 0 else 0, 2),
+            "reproducibility": round(_m.sqrt(var_operator / var_total) * 100 if var_total > 0 else 0, 2),
+            "part_to_part": round(_m.sqrt(var_parts / var_total) * 100 if var_total > 0 else 0, 2),
+        },
+        pct_tolerance={},
+        ndc=ndc,
+        grr_percent=round(grr_pct, 2),
+        assessment=assessment,
+        anova_table=[
+            {"source": "Operator", "df": df_operator, "ss": round(ss_operator, 4), "ms": round(ms_operator, 4)},
+            {"source": "Part(Operator)", "df": df_parts, "ss": round(ss_parts_within, 4), "ms": round(ms_parts, 4)},
+            {"source": "Repeatability", "df": df_repeat, "ss": round(ss_repeat, 4), "ms": round(ms_repeat, 4)},
+        ],
+        interaction_significant=False,
+        interaction_pooled=True,
+        n_parts=n_operators * n_parts_per_operator,
+        n_operators=n_operators,
+        n_replicates=n_replicates,
+        n_total=N,
+        tolerance=None,
+        plots={},
+    )
+
+
+def attribute_agreement(
+    ratings: list[list[int]],
+    reference: list[int] | None = None,
+    appraiser_labels: list[str] | None = None,
+) -> dict:
+    """Attribute Agreement Analysis.
+
+    Evaluates consistency of categorical judgments (pass/fail, go/no-go)
+    across appraisers and against a reference standard.
+
+    Args:
+        ratings: [appraiser][sample] — each value is the category assigned
+        reference: optional known-correct classification per sample
+        appraiser_labels: optional names
+
+    Returns:
+        {within_appraiser, between_appraiser, vs_reference, kappa}
+    """
+    n_appraisers = len(ratings)
+    n_samples = len(ratings[0])
+
+    # Within-appraiser agreement (if repeated trials, ratings would be 3D)
+    # For single-trial, within = 100% by definition
+
+    # Between-appraiser agreement
+    agreements = 0
+    for s in range(n_samples):
+        sample_ratings = [ratings[a][s] for a in range(n_appraisers)]
+        if len(set(sample_ratings)) == 1:
+            agreements += 1
+    between_pct = agreements / n_samples * 100 if n_samples > 0 else 0
+
+    # Vs reference (if provided)
+    vs_ref = {}
+    if reference:
+        for a in range(n_appraisers):
+            correct = sum(1 for s in range(n_samples) if ratings[a][s] == reference[s])
+            label = appraiser_labels[a] if appraiser_labels and a < len(appraiser_labels) else f"Appraiser {a+1}"
+            vs_ref[label] = round(correct / n_samples * 100, 1)
+
+    # Fleiss' kappa (simplified for 2+ appraisers)
+    categories = set()
+    for a in range(n_appraisers):
+        categories.update(ratings[a])
+    categories = sorted(categories)
+
+    # Count agreements per sample
+    P_bar = 0
+    for s in range(n_samples):
+        sample_ratings = [ratings[a][s] for a in range(n_appraisers)]
+        for cat in categories:
+            n_j = sample_ratings.count(cat)
+            P_bar += n_j * (n_j - 1)
+    P_bar /= (n_samples * n_appraisers * (n_appraisers - 1)) if n_appraisers > 1 else 1
+
+    # Expected agreement
+    P_e = 0
+    for cat in categories:
+        p_j = sum(ratings[a].count(cat) for a in range(n_appraisers)) / (n_samples * n_appraisers)
+        P_e += p_j ** 2
+
+    kappa = (P_bar - P_e) / (1 - P_e) if P_e < 1 else 1.0
+
+    return {
+        "between_appraiser_pct": round(between_pct, 1),
+        "vs_reference": vs_ref,
+        "fleiss_kappa": round(kappa, 4),
+        "kappa_interpretation": "excellent" if kappa > 0.75 else "fair_to_good" if kappa > 0.40 else "poor",
+        "n_appraisers": n_appraisers,
+        "n_samples": n_samples,
+    }

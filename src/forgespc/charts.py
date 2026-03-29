@@ -480,3 +480,109 @@ def c_chart(
     )
 
 
+
+def u_chart(
+    defect_counts: list[int],
+    inspection_units: list[float],
+) -> ControlChartResult:
+    """Create u-chart for defects per unit (variable inspection size).
+
+    Unlike c-chart, normalizes by inspection area/units. Use when
+    sample sizes vary between inspections.
+    """
+    if len(defect_counts) != len(inspection_units):
+        raise ValueError("defect_counts and inspection_units must have same length")
+
+    n_samples = len(defect_counts)
+    rates = [d / n if n > 0 else 0 for d, n in zip(defect_counts, inspection_units)]
+
+    total_defects = sum(defect_counts)
+    total_units = sum(inspection_units)
+    u_bar = total_defects / total_units if total_units > 0 else 0
+    n_bar = total_units / n_samples
+
+    sigma_u = math.sqrt(u_bar / n_bar) if n_bar > 0 else 0
+    ucl = u_bar + 3 * sigma_u
+    lcl = max(0, u_bar - 3 * sigma_u)
+
+    out_of_control = []
+    for i, (rate, n) in enumerate(zip(rates, inspection_units)):
+        sigma_i = math.sqrt(u_bar / n) if n > 0 else 0
+        ucl_i = u_bar + 3 * sigma_i
+        lcl_i = max(0, u_bar - 3 * sigma_i)
+        if rate > ucl_i:
+            out_of_control.append({"index": i, "value": rate, "reason": "Above UCL"})
+        elif rate < lcl_i:
+            out_of_control.append({"index": i, "value": rate, "reason": "Below LCL"})
+
+    in_control = len(out_of_control) == 0
+    summary_parts = [
+        f"u-Chart Analysis (k={n_samples})",
+        f"Average Defects per Unit (u-bar): {u_bar:.4f}",
+        f"Total Defects: {total_defects} across {total_units:.1f} units",
+        f"UCL: {ucl:.4f}, LCL: {lcl:.4f}",
+    ]
+    if in_control:
+        summary_parts.append("Process is IN CONTROL")
+    else:
+        summary_parts.append(f"Process is OUT OF CONTROL ({len(out_of_control)} points)")
+
+    return ControlChartResult(
+        chart_type="u",
+        data_points=rates,
+        limits=ControlLimits(ucl=ucl, cl=u_bar, lcl=lcl),
+        out_of_control=out_of_control,
+        run_violations=[],
+        in_control=in_control,
+        summary="\n".join(summary_parts),
+    )
+
+
+def np_chart(
+    defective_counts: list[int],
+    sample_size: int,
+) -> ControlChartResult:
+    """Create np-chart for number of defectives (constant sample size).
+
+    Tracks defective COUNT not proportion. Use when sample size is
+    constant across all inspections.
+    """
+    n_samples = len(defective_counts)
+    n = sample_size
+
+    total_defectives = sum(defective_counts)
+    np_bar = total_defectives / n_samples
+    p_bar = np_bar / n if n > 0 else 0
+
+    sigma_np = math.sqrt(np_bar * (1 - p_bar)) if 0 < p_bar < 1 else 0
+    ucl = np_bar + 3 * sigma_np
+    lcl = max(0, np_bar - 3 * sigma_np)
+
+    out_of_control = []
+    for i, count in enumerate(defective_counts):
+        if count > ucl:
+            out_of_control.append({"index": i, "value": count, "reason": "Above UCL"})
+        elif count < lcl:
+            out_of_control.append({"index": i, "value": count, "reason": "Below LCL"})
+
+    in_control = len(out_of_control) == 0
+    summary_parts = [
+        f"np-Chart Analysis (k={n_samples}, n={n})",
+        f"Average Defectives (np-bar): {np_bar:.2f}",
+        f"Proportion Defective (p-bar): {p_bar:.4f}",
+        f"UCL: {ucl:.2f}, LCL: {lcl:.2f}",
+    ]
+    if in_control:
+        summary_parts.append("Process is IN CONTROL")
+    else:
+        summary_parts.append(f"Process is OUT OF CONTROL ({len(out_of_control)} points)")
+
+    return ControlChartResult(
+        chart_type="np",
+        data_points=[float(d) for d in defective_counts],
+        limits=ControlLimits(ucl=ucl, cl=np_bar, lcl=lcl),
+        out_of_control=out_of_control,
+        run_violations=[],
+        in_control=in_control,
+        summary="\n".join(summary_parts),
+    )
