@@ -2,37 +2,78 @@
   "case_id": "CAL-SPC-002",
   "analysis_type": "spc",
   "analysis_id": "imr",
-  "description": "I-MR with mean shift 50\u219265 \u2192 out-of-control detected",
+  "description": "I-MR with mean shift 50\u219265 \u2014 out-of-control detected",
+  "data": [
+    49.7118,
+    49.6542,
+    49.7774,
+    51.404,
+    49.7448,
+    47.0053,
+    50.6646,
+    49.4653,
+    49.5661,
+    50.2318,
+    50.4646,
+    52.3271,
+    51.3133,
+    50.221,
+    48.5234,
+    47.9707,
+    50.4927,
+    52.6222,
+    50.0833,
+    49.7874,
+    51.0636,
+    47.0929,
+    49.3754,
+    50.9807,
+    51.7468,
+    49.5187,
+    50.7532,
+    50.4964,
+    51.5647,
+    47.7736,
+    66.1365,
+    61.971,
+    59.7601,
+    63.7862,
+    63.1684,
+    66.752,
+    66.3285,
+    62.5619,
+    66.6947,
+    62.9956,
+    64.8275,
+    64.4122,
+    65.2288,
+    66.6373,
+    66.2768,
+    65.6998,
+    66.2999,
+    65.957,
+    63.746,
+    63.5653
+  ],
   "config": {
     "measurement": "x"
   },
   "expected": {
-    "summary_contains": "I-MR Chart Analysis",
-    "guide_observation_contains": "out-of-control",
     "statistics.grand_mean": {
-      "value": 57.8019,
-      "tolerance": 2.9
+      "value": 55.8841,
+      "tolerance": 0.001
     },
     "statistics.ucl": {
-      "value": 65.9329,
-      "tolerance": 3.3
+      "value": 61.2022,
+      "tolerance": 0.001
     },
     "statistics.lcl": {
-      "value": 49.671,
-      "tolerance": 2.5
-    },
-    "statistics.sigma": {
-      "value": 2.7099,
-      "tolerance": 0.5
-    },
-    "statistics.n": {
-      "value": 50,
-      "tolerance": 0
+      "value": 50.5659,
+      "tolerance": 0.001
     },
     "statistics.n_ooc": {
-      "value": 50,
-      "tolerance": 1
+      "value": 39,
+      "tolerance": 0
     }
-  },
-  "reference": "Generated from calibration pool case CAL-SPC-002, verified 2026-03-07"
+  }
 }

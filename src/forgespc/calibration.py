@@ -1,24 +1,25 @@
 """Self-calibration service for ForgeSPC.
 
 Any installation can verify its own accuracy by running calibration
-against golden reference values. Returns a structured report.
+against golden reference values. Golden files are self-contained —
+they embed the input data AND expected results, so calibration is
+deterministic and reproducible.
 
 Usage:
     from forgespc.calibration import calibrate
 
     report = calibrate()
     print(f"Pass rate: {report.pass_rate:.0%}")
-    print(f"Failures: {report.failures}")
+    print(f"Calibrated: {report.is_calibrated}")
+    for f in report.failures:
+        print(f"  FAIL: {f.case_id} {f.metric}: expected {f.expected} ± {f.tolerance}, got {f.actual}")
 """
 
 from __future__ import annotations
 
 import json
-import math
-import random
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
 
 
 @dataclass
@@ -31,7 +32,6 @@ class CalibrationCheck:
     actual: float
     tolerance: float
     passed: bool
-    description: str = ""
 
 
 @dataclass
@@ -56,8 +56,8 @@ class CalibrationReport:
 
 # Golden files shipped with the package
 _GOLDEN_DIRS = [
-    Path(__file__).parent / "golden",  # Shipped with package
-    Path(__file__).parent.parent.parent.parent / "tests" / "golden",  # Dev layout
+    Path(__file__).parent / "golden",
+    Path(__file__).parent.parent.parent.parent / "tests" / "golden",
 ]
 
 
@@ -68,13 +68,13 @@ def _find_golden_dir() -> Path | None:
     return None
 
 
-def _generate_normal(n: int, mean: float, sigma: float, seed: int = 42) -> list[float]:
-    random.seed(seed)
-    return [mean + random.gauss(0, sigma) for _ in range(n)]
-
-
 def calibrate(golden_dir: str | Path | None = None) -> CalibrationReport:
     """Run self-calibration against golden reference files.
+
+    Each golden file is self-contained: it includes the input data
+    and the expected output values with tolerances. The calibration
+    service feeds the embedded data through ForgeSPC and compares
+    the results against the embedded expectations.
 
     Args:
         golden_dir: Path to golden files. Auto-detected if not provided.
@@ -83,14 +83,14 @@ def calibrate(golden_dir: str | Path | None = None) -> CalibrationReport:
         CalibrationReport with pass/fail for each metric.
     """
     from forgespc import __version__
-    from forgespc.charts import individuals_moving_range_chart, xbar_r_chart
+    from forgespc.charts import individuals_moving_range_chart, xbar_r_chart, p_chart
     from forgespc.capability import calculate_capability
 
     report = CalibrationReport(version=__version__)
 
     gdir = Path(golden_dir) if golden_dir else _find_golden_dir()
     if gdir is None:
-        report.errors.append("Golden files not found. Install with tests or provide golden_dir.")
+        report.errors.append("Golden files not found.")
         return report
 
     for golden_file in sorted(gdir.glob("spc_*.json")):
@@ -104,30 +104,48 @@ def calibrate(golden_dir: str | Path | None = None) -> CalibrationReport:
         case_id = golden.get("case_id", golden_file.stem)
         analysis_id = golden.get("analysis_id", "")
         expected = golden.get("expected", {})
+        data = golden.get("data")
+        config = golden.get("config", {})
 
-        # Generate data based on analysis type
+        if data is None:
+            report.errors.append(f"{case_id}: no embedded data, skipping")
+            continue
+
         try:
             if analysis_id == "imr":
-                data = _generate_normal(50, mean=50, sigma=2)
                 result = individuals_moving_range_chart(data)
-                _check_metric(report, case_id, expected, "statistics.grand_mean", result.limits.cl)
-                _check_metric(report, case_id, expected, "statistics.ucl", result.limits.ucl)
-                _check_metric(report, case_id, expected, "statistics.lcl", result.limits.lcl)
-                _check_metric(report, case_id, expected, "statistics.n_ooc", float(len(result.out_of_control)))
+                _check(report, case_id, expected, "statistics.grand_mean", result.limits.cl)
+                _check(report, case_id, expected, "statistics.ucl", result.limits.ucl)
+                _check(report, case_id, expected, "statistics.lcl", result.limits.lcl)
+                _check(report, case_id, expected, "statistics.n_ooc", float(len(result.out_of_control)))
 
             elif analysis_id == "xbar_r":
-                random.seed(42)
-                subgroups = [[50 + random.gauss(0, 2) for _ in range(5)] for _ in range(25)]
-                result = xbar_r_chart(subgroups)
-                _check_metric(report, case_id, expected, "statistics.grand_mean", result.limits.cl)
-                _check_metric(report, case_id, expected, "statistics.ucl", result.limits.ucl)
+                result = xbar_r_chart(data)
+                _check(report, case_id, expected, "statistics.grand_mean", result.limits.cl)
+                _check(report, case_id, expected, "statistics.ucl", result.limits.ucl)
+                if "statistics.n_ooc" in expected:
+                    _check(report, case_id, expected, "statistics.n_ooc", float(len(result.out_of_control)))
 
             elif analysis_id == "capability":
-                data = _generate_normal(100, mean=50, sigma=2)
-                cap = calculate_capability(data, usl=56.0, lsl=44.0)
-                _check_metric(report, case_id, expected, "statistics.cp", cap.cp)
-                _check_metric(report, case_id, expected, "statistics.cpk", cap.cpk)
-                _check_metric(report, case_id, expected, "statistics.sigma_level", cap.sigma_level)
+                usl = config.get("usl", 56.0)
+                lsl = config.get("lsl", 44.0)
+                cap = calculate_capability(data, usl=usl, lsl=lsl)
+                _check(report, case_id, expected, "statistics.cp", cap.cp)
+                _check(report, case_id, expected, "statistics.cpk", cap.cpk)
+                if "statistics.sigma_level" in expected:
+                    _check(report, case_id, expected, "statistics.sigma_level", cap.sigma_level)
+
+            elif analysis_id == "p_chart":
+                sample_size = config.get("sample_size", 100)
+                result = p_chart(data, sample_sizes=[sample_size] * len(data))
+                _check(report, case_id, expected, "statistics.p_bar", result.limits.cl)
+                if "statistics.ucl" in expected:
+                    _check(report, case_id, expected, "statistics.ucl", result.limits.ucl)
+                if "statistics.n_ooc" in expected:
+                    _check(report, case_id, expected, "statistics.n_ooc", float(len(result.out_of_control)))
+
+            else:
+                report.errors.append(f"{case_id}: unsupported analysis_id '{analysis_id}'")
 
         except Exception as e:
             report.errors.append(f"{case_id}: {e}")
@@ -135,7 +153,7 @@ def calibrate(golden_dir: str | Path | None = None) -> CalibrationReport:
     return report
 
 
-def _check_metric(report: CalibrationReport, case_id: str, expected: dict, key: str, actual: float):
+def _check(report: CalibrationReport, case_id: str, expected: dict, key: str, actual: float):
     """Check a single metric against its golden reference."""
     if key not in expected:
         return
@@ -145,8 +163,8 @@ def _check_metric(report: CalibrationReport, case_id: str, expected: dict, key: 
         ref_value = exp["value"]
         tolerance = exp["tolerance"]
     else:
-        ref_value = exp
-        tolerance = abs(ref_value * 0.1)  # 10% default tolerance
+        ref_value = float(exp)
+        tolerance = abs(ref_value * 0.05)
 
     passed = abs(actual - ref_value) <= tolerance
     check = CalibrationCheck(

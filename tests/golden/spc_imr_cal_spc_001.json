@@ -2,37 +2,78 @@
   "case_id": "CAL-SPC-001",
   "analysis_type": "spc",
   "analysis_id": "imr",
-  "description": "I-MR on stable N(50,2) \u2192 control chart runs without error",
+  "description": "I-MR on stable N(50,2) \u2014 control chart runs without error",
+  "data": [
+    49.7118,
+    49.6542,
+    49.7774,
+    51.404,
+    49.7448,
+    47.0053,
+    50.6646,
+    49.4653,
+    49.5661,
+    50.2318,
+    50.4646,
+    52.3271,
+    51.3133,
+    50.221,
+    48.5234,
+    47.9707,
+    50.4927,
+    52.6222,
+    50.0833,
+    49.7874,
+    51.0636,
+    47.0929,
+    49.3754,
+    50.9807,
+    51.7468,
+    49.5187,
+    50.7532,
+    50.4964,
+    51.5647,
+    47.7736,
+    51.1365,
+    46.971,
+    44.7601,
+    48.7862,
+    48.1684,
+    51.752,
+    51.3285,
+    47.5619,
+    51.6947,
+    47.9956,
+    49.8275,
+    49.4122,
+    50.2288,
+    51.6373,
+    51.2768,
+    50.6998,
+    51.2999,
+    50.957,
+    48.746,
+    48.5653
+  ],
   "config": {
     "measurement": "x"
   },
   "expected": {
-    "summary_contains": "I-MR Chart Analysis",
-    "guide_observation_contains": "stable",
     "statistics.grand_mean": {
-      "value": 49.9184,
-      "tolerance": 2.5
+      "value": 49.8841,
+      "tolerance": 0.001
     },
     "statistics.ucl": {
-      "value": 55.6111,
-      "tolerance": 2.8
+      "value": 54.3881,
+      "tolerance": 0.001
     },
     "statistics.lcl": {
-      "value": 44.2257,
-      "tolerance": 2.3
-    },
-    "statistics.sigma": {
-      "value": 1.8973,
-      "tolerance": 0.5
-    },
-    "statistics.n": {
-      "value": 50,
-      "tolerance": 0
+      "value": 45.38,
+      "tolerance": 0.001
     },
     "statistics.n_ooc": {
-      "value": 0,
-      "tolerance": 1
+      "value": 1,
+      "tolerance": 0
     }
-  },
-  "reference": "Generated from calibration pool case CAL-SPC-001, verified 2026-03-07"
+  }
 }
