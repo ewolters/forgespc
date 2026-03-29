@@ -85,6 +85,7 @@ def calibrate(golden_dir: str | Path | None = None) -> CalibrationReport:
     from forgespc import __version__
     from forgespc.charts import individuals_moving_range_chart, xbar_r_chart, p_chart
     from forgespc.capability import calculate_capability
+    from forgespc.advanced import cusum_chart, ewma_chart, xbar_s_chart
 
     report = CalibrationReport(version=__version__)
 
@@ -141,6 +142,32 @@ def calibrate(golden_dir: str | Path | None = None) -> CalibrationReport:
                 _check(report, case_id, expected, "statistics.p_bar", result.limits.cl)
                 if "statistics.ucl" in expected:
                     _check(report, case_id, expected, "statistics.ucl", result.limits.ucl)
+                if "statistics.n_ooc" in expected:
+                    _check(report, case_id, expected, "statistics.n_ooc", float(len(result.out_of_control)))
+
+            elif analysis_id == "cusum":
+                target = config.get("target", None)
+                k = config.get("k", 0.5)
+                h = config.get("h", 5.0)
+                result = cusum_chart(data, target=target, k=k, h=h)
+                _check(report, case_id, expected, "statistics.n_ooc", float(result.n_signals))
+                _check(report, case_id, expected, "statistics.target", result.target)
+                if "statistics.n_signals_up" in expected:
+                    _check(report, case_id, expected, "statistics.n_signals_up", float(len(result.signals_up)))
+
+            elif analysis_id == "ewma":
+                target = config.get("target", None)
+                lam = config.get("lambda", 0.2)
+                L = config.get("L", 3.0)
+                result = ewma_chart(data, target=target, lambda_param=lam, L=L)
+                _check(report, case_id, expected, "statistics.n_ooc", float(len(result.out_of_control_indices)))
+                _check(report, case_id, expected, "statistics.ucl_steady", result.ucl_steady)
+                _check(report, case_id, expected, "statistics.lcl_steady", result.lcl_steady)
+
+            elif analysis_id == "xbar_s":
+                result = xbar_s_chart(data)
+                _check(report, case_id, expected, "statistics.grand_mean", result.limits.cl)
+                _check(report, case_id, expected, "statistics.ucl", result.limits.ucl)
                 if "statistics.n_ooc" in expected:
                     _check(report, case_id, expected, "statistics.n_ooc", float(len(result.out_of_control)))
 

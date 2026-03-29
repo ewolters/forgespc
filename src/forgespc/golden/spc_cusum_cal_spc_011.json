@@ -2,37 +2,72 @@
   "case_id": "CAL-SPC-011",
   "analysis_type": "spc",
   "analysis_id": "cusum",
-  "description": "CUSUM: mean shift 50\u219255 \u2192 shift detected",
+  "description": "CUSUM: mean shift 50\u219255 \u2014 shift detected",
+  "data": [
+    49.7118,
+    49.6542,
+    49.7774,
+    51.404,
+    49.7448,
+    47.0053,
+    50.6646,
+    49.4653,
+    49.5661,
+    50.2318,
+    50.4646,
+    52.3271,
+    51.3133,
+    50.221,
+    48.5234,
+    47.9707,
+    50.4927,
+    52.6222,
+    50.0833,
+    49.7874,
+    51.0636,
+    47.0929,
+    49.3754,
+    50.9807,
+    51.7468,
+    49.5187,
+    50.7532,
+    50.4964,
+    51.5647,
+    47.7736,
+    56.1365,
+    51.971,
+    49.7601,
+    53.7862,
+    53.1684,
+    56.752,
+    56.3285,
+    52.5619,
+    56.6947,
+    52.9956,
+    54.8275,
+    54.4122,
+    55.2288,
+    56.6373,
+    56.2768,
+    55.6998,
+    56.2999,
+    55.957,
+    53.746,
+    53.5653
+  ],
   "config": {
-    "measurement": "x"
+    "target": 50.0,
+    "k": 0.5,
+    "h": 5.0
   },
   "expected": {
-    "summary_contains": "CUSUM",
-    "guide_observation_contains": "shift",
-    "statistics.sigma": {
-      "value": 3.303,
-      "tolerance": 0.5
-    },
-    "statistics.k_param": {
-      "value": 0.5,
-      "tolerance": 0
-    },
-    "statistics.h_param": {
-      "value": 5.0,
-      "tolerance": 0
-    },
-    "statistics.n": {
-      "value": 60,
+    "statistics.n_ooc": {
+      "value": 14,
       "tolerance": 0
     },
     "statistics.n_signals_up": {
-      "value": 21,
-      "tolerance": 1
-    },
-    "statistics.n_signals_down": {
-      "value": 18,
-      "tolerance": 1
+      "value": 14,
+      "tolerance": 0
     }
-  },
-  "reference": "Generated from calibration pool case CAL-SPC-011, verified 2026-03-07"
+  }
 }
