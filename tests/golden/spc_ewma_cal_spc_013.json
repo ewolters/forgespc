@@ -1,0 +1,42 @@
+{
+  "case_id": "CAL-SPC-013",
+  "analysis_type": "spc",
+  "analysis_id": "ewma",
+  "description": "EWMA: mean shift 50\u219256 \u2192 out-of-control",
+  "config": {
+    "measurement": "x"
+  },
+  "expected": {
+    "summary_contains": "EWMA",
+    "guide_observation_contains": "out-of-control",
+    "statistics.lambda_param": {
+      "value": 0.2,
+      "tolerance": 0
+    },
+    "statistics.L": {
+      "value": 3.0,
+      "tolerance": 0
+    },
+    "statistics.sigma": {
+      "value": 4.2194,
+      "tolerance": 0.5
+    },
+    "statistics.ucl_ss": {
+      "value": 56.8784,
+      "tolerance": 2.9
+    },
+    "statistics.lcl_ss": {
+      "value": 48.4395,
+      "tolerance": 2.5
+    },
+    "statistics.n": {
+      "value": 60,
+      "tolerance": 0
+    },
+    "statistics.n_ooc": {
+      "value": 8,
+      "tolerance": 1
+    }
+  },
+  "reference": "Generated from calibration pool case CAL-SPC-013, verified 2026-03-07"
+}

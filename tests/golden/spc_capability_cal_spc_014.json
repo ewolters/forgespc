@@ -1,0 +1,44 @@
+{
+  "case_id": "CAL-SPC-014",
+  "analysis_type": "spc",
+  "analysis_id": "capability",
+  "description": "Capability: N(50,8) LSL=45 USL=55 \u2192 needs improvement (Cpk<<1)",
+  "config": {
+    "measurement": "x",
+    "lsl": 45,
+    "usl": 55
+  },
+  "expected": {
+    "summary_contains": "Capability Analysis",
+    "guide_observation_contains": "improvement",
+    "statistics.mean": {
+      "value": 49.5929,
+      "tolerance": 2.5
+    },
+    "statistics.std": {
+      "value": 8.3637,
+      "tolerance": 0.5
+    },
+    "statistics.n": {
+      "value": 100,
+      "tolerance": 0
+    },
+    "statistics.cp": {
+      "value": 0.2223,
+      "tolerance": 0.05
+    },
+    "statistics.cpk": {
+      "value": 0.2042,
+      "tolerance": 0.05
+    },
+    "statistics.pp": {
+      "value": 0.1993,
+      "tolerance": 0.05
+    },
+    "statistics.ppk": {
+      "value": 0.183,
+      "tolerance": 0.05
+    }
+  },
+  "reference": "Generated from calibration pool case CAL-SPC-014, verified 2026-03-07"
+}
