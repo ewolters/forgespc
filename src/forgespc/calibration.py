@@ -209,3 +209,71 @@ def _check(report: CalibrationReport, case_id: str, expected: dict, key: str, ac
         report.passed_checks += 1
     else:
         report.failures.append(check)
+
+
+# =============================================================================
+# ForgeCal Adapter Protocol
+# =============================================================================
+
+def get_calibration_adapter():
+    """Return a ForgeCal-compatible adapter for forgespc.
+
+    This is the discovery hook. ForgeCal calls this automatically
+    when it scans installed packages. If ForgeCal is not installed,
+    returns None and the standalone calibrate() function still works.
+    """
+    try:
+        from forgecal.core import CalibrationAdapter, CalibrationCase, Expectation
+    except ImportError:
+        return None  # ForgeCal not installed — standalone mode only
+
+    golden_dir = _find_golden_dir()
+    if not golden_dir:
+        return None
+
+    import json
+
+    cases = []
+    for f in sorted(golden_dir.glob("*.json")):
+        with open(f) as fp:
+            golden = json.load(fp)
+
+        expectations = []
+        for key, exp_val in golden.get("expected", {}).items():
+            if isinstance(exp_val, bool):
+                expectations.append(Expectation(key=key, expected=exp_val, comparison="equals"))
+            elif isinstance(exp_val, (int, float)):
+                expectations.append(Expectation(key=key, expected=exp_val, tolerance=abs(exp_val * 0.01) + 0.001, comparison="abs_within"))
+            elif isinstance(exp_val, str):
+                expectations.append(Expectation(key=key, expected=exp_val, comparison="contains"))
+
+        cases.append(CalibrationCase(
+            case_id=golden["case_id"],
+            package="forgespc",
+            category=golden.get("analysis_id", "spc"),
+            analysis_type="spc",
+            analysis_id=golden.get("analysis_id", ""),
+            config=golden.get("config", {}),
+            data={"values": golden.get("data", [])} if isinstance(golden.get("data"), list) else golden.get("data", {}),
+            expectations=expectations,
+            description=golden.get("description", ""),
+            tags=[],
+        ))
+
+    def _run_spc(case):
+        """Runner for ForgeCal. Delegates to standalone calibrate()."""
+        report = calibrate()
+        # Filter to just this case
+        case_checks = [c for c in report.checks if c.case_id == case.case_id]
+        results = {c.metric: c.actual for c in case_checks}
+        failures = [c for c in case_checks if not c.passed]
+        return results, failures
+
+    from forgespc import __version__
+
+    return CalibrationAdapter(
+        package="forgespc",
+        version=__version__,
+        cases=cases,
+        runner=_run_spc,
+    )
