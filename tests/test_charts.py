@@ -9,7 +9,7 @@ from forgespc.charts import (
     c_chart,
     calculate_summary,
 )
-from forgespc.models import ControlChartResult, ControlLimits
+from forgespc.models import ControlChartResult
 
 
 @pytest.fixture

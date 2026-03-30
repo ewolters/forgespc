@@ -1,7 +1,6 @@
 """Tests for conformal SPC — distribution-free monitoring."""
 
 import random
-import numpy as np
 import pytest
 
 from forgespc.conformal import conformal_control, entropy_spc

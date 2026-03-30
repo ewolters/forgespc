@@ -6,12 +6,10 @@ No web framework, no database, no I/O dependencies.
 
 import math
 import statistics
-from dataclasses import asdict, dataclass
-from typing import Literal, Optional
 
 from .constants import CONTROL_CHART_CONSTANTS, IMR_CONSTANTS
 from .models import ControlChartResult, ControlLimits, StatisticalSummary
-from .rules import check_nelson_rules, check_western_electric_rules
+from .rules import check_western_electric_rules
 
 
 def calculate_summary(data: list[float]) -> StatisticalSummary:

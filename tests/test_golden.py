@@ -4,7 +4,6 @@ Each golden file is self-contained: input data + expected results.
 No random seed dependencies, no ambient assumptions.
 """
 
-import pytest
 from forgespc.calibration import calibrate
 
 

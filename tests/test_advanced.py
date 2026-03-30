@@ -2,7 +2,6 @@
 
 import random
 import numpy as np
-import pytest
 
 from forgespc.advanced import cusum_chart, ewma_chart, xbar_s_chart, CUSUMResult, EWMAResult
 from forgespc.models import ControlChartResult

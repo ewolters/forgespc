@@ -2,7 +2,6 @@
 
 import random
 import numpy as np
-import pytest
 
 from forgespc.bayesian import (
     bayesian_capability,

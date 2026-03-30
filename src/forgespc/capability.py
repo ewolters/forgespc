@@ -6,8 +6,7 @@ No web framework, no database, no I/O dependencies.
 
 import math
 import statistics
-from dataclasses import asdict, dataclass
-from typing import Literal, Optional
+from typing import Literal
 
 from .constants import CONTROL_CHART_CONSTANTS, IMR_CONSTANTS
 from .models import ProcessCapability

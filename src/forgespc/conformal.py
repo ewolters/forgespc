@@ -16,7 +16,7 @@ Usage:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import numpy as np
 
@@ -70,7 +70,7 @@ def conformal_control(
 
     n_cal = max(10, int(n * calibration_fraction))
     cal_data = arr[:n_cal]
-    mon_data = arr[n_cal:]
+    _ = arr[n_cal:]  # monitoring data (used by caller)
 
     # Nonconformity scores: |x - median| / MAD
     cal_median = float(np.median(cal_data))

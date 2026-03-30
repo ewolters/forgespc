@@ -5,7 +5,10 @@ Install with: pip install forgespc[advanced]
 
 from __future__ import annotations
 
+import math
 from dataclasses import asdict, dataclass
+
+from .models import ControlChartResult, ControlLimits
 
 
 def hotelling_t_squared_chart(
@@ -681,9 +684,8 @@ def gage_rr_nested(
     pct_operator = (var_operator / var_total * 100) if var_total > 0 else 0
     pct_parts = (var_parts / var_total * 100) if var_total > 0 else 0
 
-    import math as _m
-    grr_pct = _m.sqrt(var_gage / var_total) * 100 if var_total > 0 else 0
-    ndc = max(1, int(1.41 * _m.sqrt(var_parts / var_gage))) if var_gage > 0 else 0
+    grr_pct = math.sqrt(var_gage / var_total) * 100 if var_total > 0 else 0
+    ndc = max(1, int(1.41 * math.sqrt(var_parts / var_gage))) if var_gage > 0 else 0
 
     if grr_pct < 10:
         assessment = "Acceptable"
@@ -708,9 +710,9 @@ def gage_rr_nested(
         },
         pct_study_var={
             "gage_rr": round(grr_pct, 2),
-            "repeatability": round(_m.sqrt(var_repeat / var_total) * 100 if var_total > 0 else 0, 2),
-            "reproducibility": round(_m.sqrt(var_operator / var_total) * 100 if var_total > 0 else 0, 2),
-            "part_to_part": round(_m.sqrt(var_parts / var_total) * 100 if var_total > 0 else 0, 2),
+            "repeatability": round(math.sqrt(var_repeat / var_total) * 100 if var_total > 0 else 0, 2),
+            "reproducibility": round(math.sqrt(var_operator / var_total) * 100 if var_total > 0 else 0, 2),
+            "part_to_part": round(math.sqrt(var_parts / var_total) * 100 if var_total > 0 else 0, 2),
         },
         pct_tolerance={},
         ndc=ndc,
