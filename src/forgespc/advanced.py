@@ -223,6 +223,212 @@ def ewma_chart(
 # =============================================================================
 
 
+# =============================================================================
+# MEWMA — Multivariate Exponentially Weighted Moving Average
+# =============================================================================
+
+
+@dataclass
+class MEWMAResult:
+    """MEWMA chart result with T² statistics."""
+
+    t2_values: list[float]
+    ucl: float  # Chi-squared threshold
+    target: list[float]
+    lambda_param: float
+    n_vars: int
+    n: int
+    out_of_control_indices: list[int]
+    in_control: bool
+
+    def to_chart_result(self) -> ControlChartResult:
+        ooc = [
+            {"index": int(i), "value": float(self.t2_values[i]), "reason": "T² > UCL"}
+            for i in self.out_of_control_indices
+        ]
+        return ControlChartResult(
+            chart_type="MEWMA",
+            data_points=self.t2_values,
+            limits=ControlLimits(ucl=self.ucl, cl=0.0, lcl=0.0),
+            out_of_control=ooc,
+            run_violations=[],
+            in_control=self.in_control,
+            summary=f"MEWMA: {len(ooc)} OOC, lambda={self.lambda_param}, p={self.n_vars}",
+        )
+
+
+def mewma_chart(
+    data: list[list[float]],
+    target: list[float] | None = None,
+    lambda_param: float = 0.2,
+    ucl: float | None = None,
+) -> MEWMAResult:
+    """Multivariate EWMA chart for correlated quality characteristics.
+
+    Extends EWMA to p-dimensional data using Hotelling T² on the
+    EWMA vectors.
+
+    Args:
+        data: n × p matrix (list of observation vectors).
+        target: Target vector (defaults to column means).
+        lambda_param: Smoothing parameter.
+        ucl: Control limit. Defaults to chi-squared(p, 0.9973).
+
+    Returns:
+        MEWMAResult with T² statistics.
+    """
+    arr = np.array(data, dtype=float)
+    n, p = arr.shape
+
+    if target is None:
+        target_arr = np.mean(arr, axis=0)
+    else:
+        target_arr = np.array(target, dtype=float)
+
+    # Covariance matrix of raw data
+    cov = np.cov(arr, rowvar=False)
+    if cov.ndim == 0:
+        cov = np.array([[float(cov)]])
+
+    # Covariance of EWMA vector (steady-state approximation)
+    lam = lambda_param
+    cov_ewma = (lam / (2.0 - lam)) * cov
+
+    # Invert covariance
+    try:
+        cov_ewma_inv = np.linalg.inv(cov_ewma)
+    except np.linalg.LinAlgError:
+        cov_ewma_inv = np.eye(p)
+
+    # Default UCL from chi-squared approximation
+    if ucl is None:
+        # chi-squared(p, 0.9973) ≈ p + 3*sqrt(2*p) for large p
+        from scipy.stats import chi2
+
+        ucl = float(chi2.ppf(0.9973, df=p))
+
+    # Compute MEWMA
+    z = np.copy(target_arr)
+    t2_values = []
+    ooc_indices = []
+
+    for i in range(n):
+        z = lam * arr[i] + (1 - lam) * z
+        diff = z - target_arr
+        t2 = float(diff @ cov_ewma_inv @ diff)
+        t2_values.append(t2)
+        if t2 > ucl:
+            ooc_indices.append(i)
+
+    return MEWMAResult(
+        t2_values=t2_values,
+        ucl=ucl,
+        target=target_arr.tolist(),
+        lambda_param=lambda_param,
+        n_vars=p,
+        n=n,
+        out_of_control_indices=ooc_indices,
+        in_control=len(ooc_indices) == 0,
+    )
+
+
+# =============================================================================
+# Generalized Variance Chart — Multivariate Spread Monitoring
+# =============================================================================
+
+
+@dataclass
+class GeneralizedVarianceResult:
+    """Generalized variance chart result."""
+
+    gv_values: list[float]
+    ucl: float
+    cl: float
+    lcl: float
+    n_vars: int
+    subgroup_size: int
+    out_of_control_indices: list[int]
+    in_control: bool
+
+    def to_chart_result(self) -> ControlChartResult:
+        ooc = [
+            {"index": int(i), "value": float(self.gv_values[i]), "reason": "GV outside limits"}
+            for i in self.out_of_control_indices
+        ]
+        return ControlChartResult(
+            chart_type="|S|",
+            data_points=self.gv_values,
+            limits=ControlLimits(ucl=self.ucl, cl=self.cl, lcl=self.lcl),
+            out_of_control=ooc,
+            run_violations=[],
+            in_control=self.in_control,
+            summary=f"|S| Chart: {len(ooc)} OOC, p={self.n_vars}",
+        )
+
+
+def generalized_variance_chart(
+    subgroups: list[list[list[float]]],
+) -> GeneralizedVarianceResult:
+    """Generalized variance |S| chart for multivariate spread.
+
+    Monitors the determinant of each subgroup's covariance matrix.
+
+    Args:
+        subgroups: k subgroups, each n × p (list of observation vectors).
+
+    Returns:
+        GeneralizedVarianceResult with |S| values.
+    """
+    k = len(subgroups)
+    arrs = [np.array(sg, dtype=float) for sg in subgroups]
+    n = arrs[0].shape[0]  # subgroup size
+    p = arrs[0].shape[1]  # number of variables
+
+    # Compute |S_i| for each subgroup
+    gv_values = []
+    for sg_arr in arrs:
+        cov = np.cov(sg_arr, rowvar=False)
+        if cov.ndim == 0:
+            gv_values.append(float(cov))
+        else:
+            det = np.linalg.det(cov)
+            gv_values.append(max(0.0, float(det)))
+
+    # Center line = mean of |S_i|
+    cl = float(np.mean(gv_values))
+
+    # Control limits via 3-sigma on |S| (log-normal approximation)
+    if cl > 0 and len(gv_values) > 1:
+        log_gv = [float(np.log(max(g, 1e-300))) for g in gv_values]
+        log_mean = float(np.mean(log_gv))
+        log_std = float(np.std(log_gv, ddof=1))
+        import math
+
+        ucl = float(np.exp(log_mean + 3 * log_std))
+        lcl = max(0.0, float(np.exp(log_mean - 3 * log_std)))
+    else:
+        ucl = cl * 3
+        lcl = 0.0
+
+    ooc_indices = [i for i, g in enumerate(gv_values) if g > ucl or g < lcl]
+
+    return GeneralizedVarianceResult(
+        gv_values=gv_values,
+        ucl=ucl,
+        cl=cl,
+        lcl=lcl,
+        n_vars=p,
+        subgroup_size=n,
+        out_of_control_indices=ooc_indices,
+        in_control=len(ooc_indices) == 0,
+    )
+
+
+# =============================================================================
+# X-bar/S Chart — preferred for subgroups > 10
+# =============================================================================
+
+
 def xbar_s_chart(
     subgroups: list[list[float]],
     historical_mean: float | None = None,

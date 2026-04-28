@@ -536,6 +536,302 @@ def u_chart(
     )
 
 
+def laney_p_chart(
+    defectives: list[int],
+    sample_sizes: list[int],
+) -> ControlChartResult:
+    """Laney p' chart — p-chart with sigma-Z overcorrection.
+
+    Standard p-charts assume all variation is binomial. In practice,
+    within-subgroup variation often exceeds binomial theory (overdispersion).
+    The Laney correction inflates control limits by sigma_Z, the standard
+    deviation of the standardized residuals.
+
+    Reference: Laney, D.B. (2002). "Improved Control Charts for Attributes."
+    """
+    if len(defectives) != len(sample_sizes):
+        raise ValueError("defectives and sample_sizes must have same length")
+
+    n_samples = len(defectives)
+    proportions = [d / n for d, n in zip(defectives, sample_sizes)]
+
+    total_defectives = sum(defectives)
+    total_inspected = sum(sample_sizes)
+    p_bar = total_defectives / total_inspected
+
+    # Standardized residuals: Z_i = (p_i - p_bar) / sigma_binomial_i
+    z_values = []
+    for p, n in zip(proportions, sample_sizes):
+        sigma_i = math.sqrt(p_bar * (1 - p_bar) / n) if n > 0 and 0 < p_bar < 1 else 1e-10
+        z_values.append((p - p_bar) / sigma_i)
+
+    # Sigma_Z: overcorrection factor (>1 means overdispersion)
+    if len(z_values) > 1:
+        z_mean = sum(z_values) / len(z_values)
+        sigma_z = math.sqrt(sum((z - z_mean) ** 2 for z in z_values) / (len(z_values) - 1))
+    else:
+        sigma_z = 1.0
+
+    sigma_z = max(sigma_z, 1.0)  # Never shrink limits below standard p-chart
+
+    # Average sample size for display limits
+    n_bar = total_inspected / n_samples
+    sigma_p = math.sqrt(p_bar * (1 - p_bar) / n_bar) if 0 < p_bar < 1 else 0
+    ucl = p_bar + 3 * sigma_p * sigma_z
+    lcl = max(0, p_bar - 3 * sigma_p * sigma_z)
+
+    out_of_control = []
+    for i, (p, n) in enumerate(zip(proportions, sample_sizes)):
+        sigma_i = math.sqrt(p_bar * (1 - p_bar) / n) if n > 0 and 0 < p_bar < 1 else 1e-10
+        ucl_i = p_bar + 3 * sigma_i * sigma_z
+        lcl_i = max(0, p_bar - 3 * sigma_i * sigma_z)
+        if p > ucl_i:
+            out_of_control.append({"index": i, "value": p, "reason": "Above UCL"})
+        elif p < lcl_i:
+            out_of_control.append({"index": i, "value": p, "reason": "Below LCL"})
+
+    in_control = len(out_of_control) == 0
+    summary_parts = [
+        f"Laney p' Chart (k={n_samples}, σ_Z={sigma_z:.3f})",
+        f"Average Proportion (p-bar): {p_bar:.4f}",
+        f"Overcorrection: σ_Z = {sigma_z:.3f}" + (" (overdispersed)" if sigma_z > 1.05 else " (binomial adequate)"),
+        f"UCL: {ucl:.4f}, LCL: {lcl:.4f}",
+    ]
+    if in_control:
+        summary_parts.append("Process is IN CONTROL")
+    else:
+        summary_parts.append(f"Process is OUT OF CONTROL ({len(out_of_control)} points)")
+
+    return ControlChartResult(
+        chart_type="Laney p'",
+        data_points=proportions,
+        limits=ControlLimits(ucl=ucl, cl=p_bar, lcl=lcl),
+        out_of_control=out_of_control,
+        run_violations=[],
+        in_control=in_control,
+        summary="\n".join(summary_parts),
+    )
+
+
+def laney_u_chart(
+    defect_counts: list[int],
+    inspection_units: list[float],
+) -> ControlChartResult:
+    """Laney u' chart — u-chart with sigma-Z overcorrection.
+
+    Like Laney p', corrects for overdispersion in defect rate data.
+    """
+    if len(defect_counts) != len(inspection_units):
+        raise ValueError("defect_counts and inspection_units must have same length")
+
+    n_samples = len(defect_counts)
+    rates = [d / n if n > 0 else 0 for d, n in zip(defect_counts, inspection_units)]
+
+    total_defects = sum(defect_counts)
+    total_units = sum(inspection_units)
+    u_bar = total_defects / total_units if total_units > 0 else 0
+
+    # Standardized residuals
+    z_values = []
+    for rate, n in zip(rates, inspection_units):
+        sigma_i = math.sqrt(u_bar / n) if n > 0 and u_bar > 0 else 1e-10
+        z_values.append((rate - u_bar) / sigma_i)
+
+    if len(z_values) > 1:
+        z_mean = sum(z_values) / len(z_values)
+        sigma_z = math.sqrt(sum((z - z_mean) ** 2 for z in z_values) / (len(z_values) - 1))
+    else:
+        sigma_z = 1.0
+
+    sigma_z = max(sigma_z, 1.0)
+
+    n_bar = total_units / n_samples
+    sigma_u = math.sqrt(u_bar / n_bar) if n_bar > 0 and u_bar > 0 else 0
+    ucl = u_bar + 3 * sigma_u * sigma_z
+    lcl = max(0, u_bar - 3 * sigma_u * sigma_z)
+
+    out_of_control = []
+    for i, (rate, n) in enumerate(zip(rates, inspection_units)):
+        sigma_i = math.sqrt(u_bar / n) if n > 0 and u_bar > 0 else 1e-10
+        ucl_i = u_bar + 3 * sigma_i * sigma_z
+        lcl_i = max(0, u_bar - 3 * sigma_i * sigma_z)
+        if rate > ucl_i:
+            out_of_control.append({"index": i, "value": rate, "reason": "Above UCL"})
+        elif rate < lcl_i:
+            out_of_control.append({"index": i, "value": rate, "reason": "Below LCL"})
+
+    in_control = len(out_of_control) == 0
+    summary_parts = [
+        f"Laney u' Chart (k={n_samples}, σ_Z={sigma_z:.3f})",
+        f"Average Rate (u-bar): {u_bar:.4f}",
+        f"Overcorrection: σ_Z = {sigma_z:.3f}",
+        f"UCL: {ucl:.4f}, LCL: {lcl:.4f}",
+    ]
+    if in_control:
+        summary_parts.append("Process is IN CONTROL")
+    else:
+        summary_parts.append(f"Process is OUT OF CONTROL ({len(out_of_control)} points)")
+
+    return ControlChartResult(
+        chart_type="Laney u'",
+        data_points=rates,
+        limits=ControlLimits(ucl=ucl, cl=u_bar, lcl=lcl),
+        out_of_control=out_of_control,
+        run_violations=[],
+        in_control=in_control,
+        summary="\n".join(summary_parts),
+    )
+
+
+def moving_average_chart(
+    data: list[float],
+    window: int = 3,
+    target: float | None = None,
+) -> ControlChartResult:
+    """Moving Average (MA) control chart.
+
+    Plots the arithmetic mean of the last `window` observations.
+    Smoother than I-MR, detects sustained shifts faster than Shewhart.
+    """
+    n = len(data)
+    if n < window:
+        raise ValueError(f"Need at least {window} data points for window={window}")
+
+    if target is None:
+        target = statistics.mean(data)
+
+    # Estimate sigma from moving ranges
+    moving_ranges = [abs(data[i] - data[i - 1]) for i in range(1, n)]
+    mr_bar = statistics.mean(moving_ranges)
+    sigma = mr_bar / IMR_CONSTANTS["d2"]
+
+    # Compute moving averages
+    ma_values = []
+    for i in range(n):
+        start = max(0, i - window + 1)
+        w = data[start : i + 1]
+        ma_values.append(statistics.mean(w))
+
+    # Control limits narrow as window fills, then constant
+    sigma_ma = sigma / math.sqrt(window)
+    ucl = target + 3 * sigma_ma
+    lcl = target - 3 * sigma_ma
+
+    out_of_control = []
+    for i, val in enumerate(ma_values):
+        actual_w = min(i + 1, window)
+        sigma_i = sigma / math.sqrt(actual_w)
+        ucl_i = target + 3 * sigma_i
+        lcl_i = target - 3 * sigma_i
+        if val > ucl_i:
+            out_of_control.append({"index": i, "value": val, "reason": "Above UCL"})
+        elif val < lcl_i:
+            out_of_control.append({"index": i, "value": val, "reason": "Below LCL"})
+
+    in_control = len(out_of_control) == 0
+    summary_parts = [
+        f"Moving Average Chart (n={n}, window={window})",
+        f"Target: {target:.4f}, σ: {sigma:.4f}",
+        f"UCL: {ucl:.4f}, LCL: {lcl:.4f} (steady-state)",
+    ]
+    if in_control:
+        summary_parts.append("Process is IN CONTROL")
+    else:
+        summary_parts.append(f"Process is OUT OF CONTROL ({len(out_of_control)} points)")
+
+    return ControlChartResult(
+        chart_type="MA",
+        data_points=ma_values,
+        limits=ControlLimits(ucl=ucl, cl=target, lcl=lcl),
+        out_of_control=out_of_control,
+        run_violations=[],
+        in_control=in_control,
+        summary="\n".join(summary_parts),
+    )
+
+
+def zone_chart(
+    data: list[float],
+    target: float | None = None,
+) -> ControlChartResult:
+    """Zone chart — cumulative scoring by zone violations.
+
+    Assigns scores based on distance from center line:
+    - Zone C (0-1σ): 0 points
+    - Zone B (1-2σ): 2 points
+    - Zone A (2-3σ): 4 points
+    - Beyond 3σ: 8 points (automatic signal)
+
+    Signal when cumulative score ≥ 8. Resets on side change.
+    """
+    n = len(data)
+    if n < 2:
+        raise ValueError("Need at least 2 data points")
+
+    if target is None:
+        target = statistics.mean(data)
+
+    moving_ranges = [abs(data[i] - data[i - 1]) for i in range(1, n)]
+    mr_bar = statistics.mean(moving_ranges)
+    sigma = mr_bar / IMR_CONSTANTS["d2"]
+
+    if sigma == 0:
+        sigma = 1.0
+
+    out_of_control = []
+    cum_score = 0
+    last_side = 0  # +1 above CL, -1 below
+
+    for i, val in enumerate(data):
+        z = (val - target) / sigma
+        side = 1 if z >= 0 else -1
+
+        # Reset on side change
+        if side != last_side and last_side != 0:
+            cum_score = 0
+        last_side = side
+
+        abs_z = abs(z)
+        if abs_z >= 3:
+            score = 8
+        elif abs_z >= 2:
+            score = 4
+        elif abs_z >= 1:
+            score = 2
+        else:
+            score = 0
+
+        cum_score += score
+        if cum_score >= 8:
+            reason = f"Zone score={cum_score} (|z|={abs_z:.2f})"
+            out_of_control.append({"index": i, "value": val, "reason": reason})
+            cum_score = 0  # Reset after signal
+
+    ucl = target + 3 * sigma
+    lcl = target - 3 * sigma
+    in_control = len(out_of_control) == 0
+
+    summary_parts = [
+        f"Zone Chart (n={n})",
+        f"Target: {target:.4f}, σ: {sigma:.4f}",
+        f"UCL: {ucl:.4f}, LCL: {lcl:.4f}",
+    ]
+    if in_control:
+        summary_parts.append("Process is IN CONTROL")
+    else:
+        summary_parts.append(f"Process is OUT OF CONTROL ({len(out_of_control)} zone signals)")
+
+    return ControlChartResult(
+        chart_type="Zone",
+        data_points=data,
+        limits=ControlLimits(ucl=ucl, cl=target, lcl=lcl),
+        out_of_control=out_of_control,
+        run_violations=[],
+        in_control=in_control,
+        summary="\n".join(summary_parts),
+    )
+
+
 def np_chart(
     defective_counts: list[int],
     sample_size: int,

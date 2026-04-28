@@ -141,6 +141,86 @@ def calculate_capability(
 # =============================================================================
 
 
+def degradation_capability(
+    data: list[float],
+    usl: float,
+    lsl: float,
+    time_indices: list[int] | None = None,
+    window_size: int = 20,
+) -> dict:
+    """Track process capability degradation over time.
+
+    Computes Cpk in rolling windows to show how capability changes
+    as tooling wears, materials age, or processes degrade.
+
+    Args:
+        data: Measurement data in time order.
+        usl: Upper specification limit.
+        lsl: Lower specification limit.
+        time_indices: Optional time labels for each window.
+        window_size: Rolling window size.
+
+    Returns:
+        Dict with time-indexed Cpk values, trend, and estimated
+        time to Cpk < 1.0 (if degrading).
+    """
+    n = len(data)
+    if n < window_size:
+        raise ValueError(f"Need at least {window_size} data points for window_size={window_size}")
+
+    cpk_values = []
+    for i in range(n - window_size + 1):
+        window = data[i : i + window_size]
+        mean = statistics.mean(window)
+        std = statistics.stdev(window) if len(window) > 1 else 1e-10
+        if std == 0:
+            std = 1e-10
+        cpu = (usl - mean) / (3 * std)
+        cpl = (mean - lsl) / (3 * std)
+        cpk_values.append(min(cpu, cpl))
+
+    # Linear trend
+    n_windows = len(cpk_values)
+    x_mean = (n_windows - 1) / 2.0
+    y_mean = statistics.mean(cpk_values)
+    num = sum((i - x_mean) * (cpk_values[i] - y_mean) for i in range(n_windows))
+    den = sum((i - x_mean) ** 2 for i in range(n_windows))
+    slope = num / den if den > 0 else 0
+    intercept = y_mean - slope * x_mean
+
+    # Time to Cpk < 1.0 (if degrading)
+    ttf = None
+    if slope < 0 and intercept > 1.0:
+        # intercept + slope * t = 1.0
+        t_cross = (1.0 - intercept) / slope
+        if t_cross > n_windows:
+            ttf = int(t_cross - n_windows)  # windows remaining
+
+    if time_indices is None:
+        time_indices = list(range(n_windows))
+    else:
+        time_indices = time_indices[: n_windows]
+
+    trend = "degrading" if slope < -0.001 else "improving" if slope > 0.001 else "stable"
+    current_cpk = cpk_values[-1] if cpk_values else 0
+
+    return {
+        "cpk_values": [round(c, 4) for c in cpk_values],
+        "time_indices": time_indices,
+        "slope": round(slope, 6),
+        "intercept": round(intercept, 4),
+        "trend": trend,
+        "current_cpk": round(current_cpk, 4),
+        "windows_to_cpk_1": ttf,
+        "window_size": window_size,
+        "summary": (
+            f"Degradation: Cpk={current_cpk:.3f} ({trend}), "
+            f"slope={slope:.4f}/window"
+            + (f", ~{ttf} windows to Cpk<1.0" if ttf else "")
+        ),
+    }
+
+
 def recommend_chart_type(
     data_type: Literal["continuous", "attribute"],
     subgroup_size: int = 1,

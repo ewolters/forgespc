@@ -33,8 +33,13 @@ __all__ = [
     "c_chart",
     "u_chart",
     "np_chart",
+    "laney_p_chart",
+    "laney_u_chart",
+    "moving_average_chart",
+    "zone_chart",
     # capability
     "calculate_capability",
+    "degradation_capability",
     # rules
     "check_nelson_rules",
     "check_western_electric_rules",
@@ -42,6 +47,8 @@ __all__ = [
     "cusum_chart",
     "ewma_chart",
     "xbar_s_chart",
+    "mewma_chart",
+    "generalized_variance_chart",
     # gage
     "gage_rr_crossed",
     "gage_rr_nested",
