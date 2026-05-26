@@ -240,7 +240,7 @@ def recommend_chart_type(
             return "X-bar S"
     else:  # attribute
         if attribute_type == "defectives":
-            return "p" if subgroup_size > 1 else "np"
+            return "np" if subgroup_size > 1 else "p"
         else:  # defects
             return "c" if subgroup_size == 1 else "u"
 

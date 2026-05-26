@@ -75,9 +75,8 @@ def z_to_dpmo(z: float) -> float:
     def norm_cdf(x):
         return 0.5 * (1 + math.erf(x / math.sqrt(2)))
 
-    # Two-tailed defect rate
-    defect_rate = 1 - norm_cdf(z_shifted) + norm_cdf(-z_shifted - 3)  # Simplified
-    defect_rate = max(0, min(1, 1 - norm_cdf(z_shifted)))  # Upper tail only for simplicity
+    # Upper tail defect rate (standard 1.5σ shift convention)
+    defect_rate = max(0, min(1, 1 - norm_cdf(z_shifted)))
 
     return defect_rate * 1_000_000
 

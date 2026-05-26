@@ -185,14 +185,19 @@ def check_nelson_rules(
                         }
                     )
 
-    # Deduplicate violations (same rule, overlapping indices)
-    seen = set()
+    # Deduplicate: keep first violation per rule per contiguous run.
+    # Overlapping windows (e.g., [0..14] and [1..15]) collapse to one.
+    seen_rule_end: dict[int, int] = {}  # rule -> last reported end index
     unique_violations = []
     for v in violations:
-        key = (v["rule"], tuple(v["indices"]))
-        if key not in seen:
-            seen.add(key)
-            unique_violations.append(v)
+        rule = v["rule"]
+        start = v["indices"][0]
+        end = v["indices"][-1]
+        prev_end = seen_rule_end.get(rule, -999)
+        if start <= prev_end:
+            continue  # overlaps with previous violation of same rule
+        seen_rule_end[rule] = end
+        unique_violations.append(v)
 
     return unique_violations
 
