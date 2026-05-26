@@ -18,28 +18,32 @@ def calculate_summary(data: list[float]) -> StatisticalSummary:
     if n < 2:
         raise ValueError("Need at least 2 data points")
 
-    sorted_data = sorted(data)
     mean = statistics.mean(data)
 
-    # Quartiles
-    q1_idx = n // 4
-    q3_idx = (3 * n) // 4
-    q1 = sorted_data[q1_idx]
-    q3 = sorted_data[q3_idx]
+    # Quartiles (linear interpolation, matches statistics.quantiles)
+    quantiles = statistics.quantiles(data, n=4)
+    q1 = quantiles[0]
+    q3 = quantiles[2]
 
-    # Variance and std dev
+    # Variance and std dev (sample, n-1 denominator)
     variance = statistics.variance(data)
     std_dev = math.sqrt(variance)
 
-    # Skewness (Fisher's)
-    if std_dev > 0:
-        skewness = sum((x - mean) ** 3 for x in data) / (n * std_dev**3)
+    # Skewness (adjusted Fisher-Pearson, matches scipy bias=False)
+    if std_dev > 0 and n >= 3:
+        m2 = sum((x - mean) ** 2 for x in data) / n
+        m3 = sum((x - mean) ** 3 for x in data) / n
+        g1 = m3 / m2 ** 1.5
+        skewness = g1 * math.sqrt(n * (n - 1)) / (n - 2)
     else:
         skewness = 0.0
 
-    # Kurtosis (excess)
-    if std_dev > 0:
-        kurtosis = sum((x - mean) ** 4 for x in data) / (n * std_dev**4) - 3
+    # Kurtosis (excess, adjusted, matches scipy bias=False)
+    if std_dev > 0 and n >= 4:
+        m2 = sum((x - mean) ** 2 for x in data) / n
+        m4 = sum((x - mean) ** 4 for x in data) / n
+        g2 = m4 / m2 ** 2 - 3
+        kurtosis = ((n - 1) / ((n - 2) * (n - 3))) * ((n + 1) * g2 + 6)
     else:
         kurtosis = 0.0
 

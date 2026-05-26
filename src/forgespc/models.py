@@ -68,14 +68,13 @@ class ProcessCapability:
     sigma_overall: float  # Overall std dev
     sigma_level: float  # Process sigma level (Z score)
 
-    # Defect metrics
-    dpmo: float  # Defects per million opportunities
-    yield_percent: float  # Process yield %
+    # Defect metrics (within-subgroup sigma, consistent with Cp/Cpk)
+    dpmo: float  # Defects per million opportunities (within sigma)
+    yield_percent: float  # Process yield % (within sigma)
 
     # Specs
     usl: float
     lsl: float
-    target: float | None
 
     # Data summary
     mean: float
@@ -83,6 +82,11 @@ class ProcessCapability:
 
     # Interpretation
     interpretation: str
+
+    # Optional
+    target: float | None = None
+    dpmo_overall: float | None = None  # DPMO using overall sigma (Pp/Ppk basis)
+    yield_overall: float | None = None  # Yield using overall sigma
 
     def to_dict(self) -> dict:
         return asdict(self)

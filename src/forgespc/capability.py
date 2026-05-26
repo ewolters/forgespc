@@ -81,23 +81,25 @@ def calculate_capability(
     ppl = (mean - lsl) / (3 * sigma_overall) if sigma_overall > 0 else 0
     ppk = min(ppu, ppl)
 
-    # Sigma level (based on Cpk)
+    # Sigma level (based on Cpk, within-subgroup sigma)
     sigma_level = 3 * cpk if cpk > 0 else 0
 
-    # DPMO calculation
-    # Using normal distribution approximation
     def norm_cdf(x):
         return 0.5 * (1 + math.erf(x / math.sqrt(2)))
 
-    z_upper = (usl - mean) / sigma_overall if sigma_overall > 0 else float("inf")
-    z_lower = (mean - lsl) / sigma_overall if sigma_overall > 0 else float("inf")
+    # DPMO from within-subgroup sigma (consistent with Cp/Cpk/sigma_level)
+    z_upper_w = (usl - mean) / sigma_within if sigma_within > 0 else float("inf")
+    z_lower_w = (mean - lsl) / sigma_within if sigma_within > 0 else float("inf")
+    defect_rate_within = (1 - norm_cdf(z_upper_w)) + norm_cdf(-z_lower_w)
+    dpmo = defect_rate_within * 1_000_000
+    yield_percent = (1 - defect_rate_within) * 100
 
-    p_above_usl = 1 - norm_cdf(z_upper)
-    p_below_lsl = norm_cdf(-z_lower)
-    total_defect_rate = p_above_usl + p_below_lsl
-
-    dpmo = total_defect_rate * 1_000_000
-    yield_percent = (1 - total_defect_rate) * 100
+    # DPMO from overall sigma (consistent with Pp/Ppk)
+    z_upper_o = (usl - mean) / sigma_overall if sigma_overall > 0 else float("inf")
+    z_lower_o = (mean - lsl) / sigma_overall if sigma_overall > 0 else float("inf")
+    defect_rate_overall = (1 - norm_cdf(z_upper_o)) + norm_cdf(-z_lower_o)
+    dpmo_overall = defect_rate_overall * 1_000_000
+    yield_overall = (1 - defect_rate_overall) * 100
 
     # Interpretation
     if cpk >= 2.0:
@@ -129,10 +131,12 @@ def calculate_capability(
         yield_percent=yield_percent,
         usl=usl,
         lsl=lsl,
-        target=target,
         mean=mean,
         n_samples=n,
         interpretation=interpretation,
+        target=target,
+        dpmo_overall=dpmo_overall,
+        yield_overall=yield_overall,
     )
 
 
