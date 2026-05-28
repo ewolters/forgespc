@@ -70,19 +70,29 @@ def calculate_capability(
     spec_width = usl - lsl
 
     # Short-term capability (Cp, Cpk)
-    cp = spec_width / (6 * sigma_within) if sigma_within > 0 else 0
-    cpu = (usl - mean) / (3 * sigma_within) if sigma_within > 0 else 0
-    cpl = (mean - lsl) / (3 * sigma_within) if sigma_within > 0 else 0
+    if sigma_within > 0:
+        cp = spec_width / (6 * sigma_within)
+        cpu = (usl - mean) / (3 * sigma_within)
+        cpl = (mean - lsl) / (3 * sigma_within)
+    else:
+        cp = float('inf') if lsl <= mean <= usl else 0.0
+        cpu = float('inf') if mean <= usl else 0.0
+        cpl = float('inf') if mean >= lsl else 0.0
     cpk = min(cpu, cpl)
 
     # Long-term performance (Pp, Ppk)
-    pp = spec_width / (6 * sigma_overall) if sigma_overall > 0 else 0
-    ppu = (usl - mean) / (3 * sigma_overall) if sigma_overall > 0 else 0
-    ppl = (mean - lsl) / (3 * sigma_overall) if sigma_overall > 0 else 0
+    if sigma_overall > 0:
+        pp = spec_width / (6 * sigma_overall)
+        ppu = (usl - mean) / (3 * sigma_overall)
+        ppl = (mean - lsl) / (3 * sigma_overall)
+    else:
+        pp = float('inf') if lsl <= mean <= usl else 0.0
+        ppu = float('inf') if mean <= usl else 0.0
+        ppl = float('inf') if mean >= lsl else 0.0
     ppk = min(ppu, ppl)
 
     # Sigma level (based on Cpk, within-subgroup sigma)
-    sigma_level = 3 * cpk if cpk > 0 else 0
+    sigma_level = 3 * cpk if cpk > 0 and cpk != float('inf') else (6.0 if cpk == float('inf') else 0)
 
     def norm_cdf(x):
         return 0.5 * (1 + math.erf(x / math.sqrt(2)))
