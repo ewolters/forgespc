@@ -197,9 +197,14 @@ def individuals_moving_range_chart(
     i_ucl = x_bar + 3 * sigma
     i_lcl = x_bar - 3 * sigma
 
-    # Control limits for MR chart
-    mr_ucl = IMR_CONSTANTS["D4"] * mr_bar
-    mr_lcl = IMR_CONSTANTS["D3"] * mr_bar
+    # Control limits for MR chart — use historical sigma if provided
+    if historical_sigma is not None:
+        mr_bar_hist = historical_sigma * IMR_CONSTANTS["d2"]
+        mr_ucl = IMR_CONSTANTS["D4"] * mr_bar_hist
+        mr_lcl = IMR_CONSTANTS["D3"] * mr_bar_hist
+    else:
+        mr_ucl = IMR_CONSTANTS["D4"] * mr_bar
+        mr_lcl = IMR_CONSTANTS["D3"] * mr_bar
 
     # Find out of control points (Individuals)
     out_of_control = []
@@ -307,9 +312,14 @@ def xbar_r_chart(
         xbar_ucl = x_bar_bar + constants["A2"] * r_bar
         xbar_lcl = x_bar_bar - constants["A2"] * r_bar
 
-    # Control limits for R chart
-    r_ucl = constants["D4"] * r_bar
-    r_lcl = constants["D3"] * r_bar
+    # Control limits for R chart — use historical sigma if provided
+    if historical_sigma is not None:
+        r_bar_hist = historical_sigma * constants["d2"]
+        r_ucl = constants["D4"] * r_bar_hist
+        r_lcl = constants["D3"] * r_bar_hist
+    else:
+        r_ucl = constants["D4"] * r_bar
+        r_lcl = constants["D3"] * r_bar
 
     # Find out of control points (X-bar)
     out_of_control = []
@@ -408,7 +418,10 @@ def p_chart(
         elif p < lcl_i:
             out_of_control.append({"index": i, "value": p, "reason": "Below LCL"})
 
-    in_control = len(out_of_control) == 0
+    # Run rules on proportions using average-n limits
+    run_violations = check_western_electric_rules(proportions, p_bar, sigma_p) if sigma_p > 0 else []
+
+    in_control = len(out_of_control) == 0 and len(run_violations) == 0
 
     summary_parts = [
         f"p-Chart Analysis (k={n_samples})",
@@ -426,7 +439,7 @@ def p_chart(
         data_points=proportions,
         limits=ControlLimits(ucl=ucl, cl=p_bar, lcl=lcl),
         out_of_control=out_of_control,
-        run_violations=[],
+        run_violations=run_violations,
         in_control=in_control,
         summary="\n".join(summary_parts),
     )
@@ -458,7 +471,12 @@ def c_chart(
         elif c < lcl:
             out_of_control.append({"index": i, "value": c, "reason": "Below LCL"})
 
-    in_control = len(out_of_control) == 0
+    # Run rules on defect counts
+    run_violations = check_western_electric_rules(
+        [float(c) for c in defect_counts], c_bar, sigma_c,
+    ) if sigma_c > 0 else []
+
+    in_control = len(out_of_control) == 0 and len(run_violations) == 0
 
     summary_parts = [
         f"c-Chart Analysis (k={n_samples})",
@@ -475,7 +493,7 @@ def c_chart(
         data_points=[float(c) for c in defect_counts],
         limits=ControlLimits(ucl=ucl, cl=c_bar, lcl=lcl),
         out_of_control=out_of_control,
-        run_violations=[],
+        run_violations=run_violations,
         in_control=in_control,
         summary="\n".join(summary_parts),
     )
@@ -516,7 +534,10 @@ def u_chart(
         elif rate < lcl_i:
             out_of_control.append({"index": i, "value": rate, "reason": "Below LCL"})
 
-    in_control = len(out_of_control) == 0
+    # Run rules on defect rates
+    run_violations = check_western_electric_rules(rates, u_bar, sigma_u) if sigma_u > 0 else []
+
+    in_control = len(out_of_control) == 0 and len(run_violations) == 0
     summary_parts = [
         f"u-Chart Analysis (k={n_samples})",
         f"Average Defects per Unit (u-bar): {u_bar:.4f}",
@@ -533,7 +554,7 @@ def u_chart(
         data_points=rates,
         limits=ControlLimits(ucl=ucl, cl=u_bar, lcl=lcl),
         out_of_control=out_of_control,
-        run_violations=[],
+        run_violations=run_violations,
         in_control=in_control,
         summary="\n".join(summary_parts),
     )
@@ -862,7 +883,12 @@ def np_chart(
         elif count < lcl:
             out_of_control.append({"index": i, "value": count, "reason": "Below LCL"})
 
-    in_control = len(out_of_control) == 0
+    # Run rules on defective counts
+    run_violations = check_western_electric_rules(
+        [float(d) for d in defective_counts], np_bar, sigma_np,
+    ) if sigma_np > 0 else []
+
+    in_control = len(out_of_control) == 0 and len(run_violations) == 0
     summary_parts = [
         f"np-Chart Analysis (k={n_samples}, n={n})",
         f"Average Defectives (np-bar): {np_bar:.2f}",
@@ -879,7 +905,7 @@ def np_chart(
         data_points=[float(d) for d in defective_counts],
         limits=ControlLimits(ucl=ucl, cl=np_bar, lcl=lcl),
         out_of_control=out_of_control,
-        run_violations=[],
+        run_violations=run_violations,
         in_control=in_control,
         summary="\n".join(summary_parts),
     )

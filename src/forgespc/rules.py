@@ -30,6 +30,18 @@ def check_nelson_rules(
     # Calculate z-scores for zone classification
     zones = [(x - center) / sigma for x in data]
 
+    # Rule 1: One point beyond 3 sigma
+    for i, z in enumerate(zones):
+        if abs(z) > 3:
+            side = "above +3σ" if z > 3 else "below -3σ"
+            violations.append(
+                {
+                    "rule": 1,
+                    "indices": [i],
+                    "description": f"One point {side}",
+                }
+            )
+
     # Rule 2: Nine points in a row on same side of center
     if n >= 9:
         for i in range(8, n):

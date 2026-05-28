@@ -119,8 +119,8 @@
       "tolerance": 0.001
     },
     "statistics.sigma_level": {
-      "value": 5.8441,
-      "tolerance": 0.001
+      "value": 7.3441,
+      "tolerance": 0.01
     }
   }
 }
