@@ -18,6 +18,7 @@ def calculate_capability(
     lsl: float,
     target: float | None = None,
     subgroup_size: int = 1,
+    include_bayesian: bool = False,
 ) -> ProcessCapability:
     """
     Calculate process capability indices.
@@ -28,6 +29,7 @@ def calculate_capability(
         lsl: Lower specification limit
         target: Target value (defaults to midpoint of specs)
         subgroup_size: Size of rational subgroups for within-group sigma estimate
+        include_bayesian: If True, compute Bayesian shadow (requires numpy/scipy)
     """
     n = len(data)
     if n < 2:
@@ -91,8 +93,10 @@ def calculate_capability(
         ppl = float('inf') if mean >= lsl else 0.0
     ppk = min(ppu, ppl)
 
-    # Sigma level (based on Cpk, within-subgroup sigma)
-    sigma_level = 3 * cpk if cpk > 0 and cpk != float('inf') else (6.0 if cpk == float('inf') else 0)
+    # Sigma level (Motorola convention: short-term Z + 1.5σ shift)
+    # 3*Cpk is the short-term Z score; add 1.5 for the conventional sigma level
+    z_short = 3 * cpk if cpk > 0 and cpk != float('inf') else (6.0 if cpk == float('inf') else 0)
+    sigma_level = z_short + 1.5 if z_short > 0 else 0
 
     def norm_cdf(x):
         return 0.5 * (1 + math.erf(x / math.sqrt(2)))
@@ -125,6 +129,24 @@ def calculate_capability(
     else:
         interpretation = "Very Poor: Process is not capable, major improvement needed"
 
+    # Bayesian shadow
+    bayesian_shadow = None
+    if include_bayesian:
+        try:
+            from .bayesian import bayesian_capability
+            import numpy as np
+            bc = bayesian_capability(data=np.asarray(data, dtype=float), usl=usl, lsl=lsl, target=target)
+            bayesian_shadow = {
+                "cpk_median": bc.cpk_median, "cpk_ci": list(bc.cpk_ci),
+                "p_gt_1": bc.p_gt_1, "p_gt_133": bc.p_gt_133,
+                "p_gt_167": bc.p_gt_167, "p_gt_2": bc.p_gt_2,
+                "cpk_freq": bc.cpk_freq, "dpmo": bc.dpmo,
+                "yield_pct": bc.yield_pct, "sigma_level": bc.sigma_level,
+                "verdict": bc.verdict,
+            }
+        except Exception:
+            pass
+
     return ProcessCapability(
         cp=cp,
         cpk=cpk,
@@ -147,6 +169,7 @@ def calculate_capability(
         target=target,
         dpmo_overall=dpmo_overall,
         yield_overall=yield_overall,
+        bayesian_shadow=bayesian_shadow,
     )
 
 

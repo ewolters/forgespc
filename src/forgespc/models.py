@@ -40,10 +40,41 @@ class ControlChartResult:
     # For X-bar charts, also include R or S chart
     secondary_chart: Optional["ControlChartResult"] = None
 
+    @property
+    def n(self) -> int:
+        return len(self.data_points)
+
+    @property
+    def n_ooc(self) -> int:
+        return len(self.out_of_control)
+
+    @property
+    def n_run_violations(self) -> int:
+        return len(self.run_violations)
+
+    @property
+    def ucl(self) -> float:
+        return self.limits.ucl
+
+    @property
+    def cl(self) -> float:
+        return self.limits.cl
+
+    @property
+    def lcl(self) -> float:
+        return self.limits.lcl
+
     def to_dict(self) -> dict:
         result = asdict(self)
         if self.secondary_chart:
             result["secondary_chart"] = self.secondary_chart.to_dict()
+        # Add computed fields for forgenarr template compatibility
+        result["n"] = self.n
+        result["n_ooc"] = self.n_ooc
+        result["n_run_violations"] = self.n_run_violations
+        result["ucl"] = self.ucl
+        result["cl"] = self.cl
+        result["lcl"] = self.lcl
         return result
 
 
@@ -87,6 +118,7 @@ class ProcessCapability:
     target: float | None = None
     dpmo_overall: float | None = None  # DPMO using overall sigma (Pp/Ppk basis)
     yield_overall: float | None = None  # Yield using overall sigma
+    bayesian_shadow: dict | None = None  # Bayesian capability results if requested
 
     def to_dict(self) -> dict:
         return asdict(self)
