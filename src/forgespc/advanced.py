@@ -87,7 +87,10 @@ def cusum_chart(
     if target is None:
         target = float(np.mean(arr))
 
-    sigma = float(np.std(arr, ddof=1))
+    # Use MR-bar/d2 for within-subgroup sigma (not sample stdev which inflates
+    # when shifts are present — the exact condition CUSUM is designed to detect)
+    mr = np.abs(np.diff(arr))
+    sigma = float(np.mean(mr) / 1.128) if len(mr) > 0 else 1.0  # d2=1.128 for n=2
     if sigma == 0:
         sigma = 1.0
 
@@ -178,7 +181,9 @@ def ewma_chart(
     if target is None:
         target = float(np.mean(arr))
 
-    sigma = float(np.std(arr, ddof=1))
+    # Use MR-bar/d2 for within-subgroup sigma (not sample stdev)
+    mr = np.abs(np.diff(arr))
+    sigma = float(np.mean(mr) / 1.128) if len(mr) > 0 else 1.0  # d2=1.128 for n=2
     if sigma == 0:
         sigma = 1.0
 

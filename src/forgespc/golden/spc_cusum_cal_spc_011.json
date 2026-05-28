@@ -62,11 +62,11 @@
   },
   "expected": {
     "statistics.n_ooc": {
-      "value": 14,
+      "value": 17,
       "tolerance": 0
     },
     "statistics.n_signals_up": {
-      "value": 14,
+      "value": 17,
       "tolerance": 0
     }
   }

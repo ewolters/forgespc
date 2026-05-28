@@ -62,7 +62,7 @@
   },
   "expected": {
     "statistics.n_ooc": {
-      "value": 15,
+      "value": 18,
       "tolerance": 0
     }
   }

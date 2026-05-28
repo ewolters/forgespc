@@ -66,11 +66,11 @@
       "tolerance": 0
     },
     "statistics.ucl_steady": {
-      "value": 51.6083,
+      "value": 51.5013,
       "tolerance": 0.001
     },
     "statistics.lcl_steady": {
-      "value": 48.3917,
+      "value": 48.4987,
       "tolerance": 0.001
     }
   }
