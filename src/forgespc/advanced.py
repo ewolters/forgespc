@@ -471,9 +471,14 @@ def xbar_s_chart(
     # Estimated sigma
     sigma_within = s_bar / c4 if historical_sigma is None else historical_sigma
 
-    # X-bar limits
-    x_ucl = grand_mean + A3 * s_bar
-    x_lcl = grand_mean - A3 * s_bar
+    # X-bar limits: use historical sigma for Phase 2, data-derived for Phase 1
+    if historical_sigma is not None:
+        import math
+        x_ucl = grand_mean + 3 * historical_sigma / math.sqrt(n_per_group)
+        x_lcl = grand_mean - 3 * historical_sigma / math.sqrt(n_per_group)
+    else:
+        x_ucl = grand_mean + A3 * s_bar
+        x_lcl = grand_mean - A3 * s_bar
 
     # S chart limits
     s_ucl = B4 * s_bar
