@@ -44,6 +44,50 @@ class ControlChartResult:
     def n(self) -> int:
         return len(self.data_points)
 
+    def to_render(self):
+        """Emit a theme-neutral forgerender.ChartSpec for this control chart.
+
+        Semantic roles (not literal colors) carry meaning; the consumer's theme
+        maps role -> color. Depends only on forgerender, never on forgeviz.
+        """
+        from forgerender import ChartSpec
+
+        lim = self.limits
+        x = list(range(1, len(self.data_points) + 1))
+        spec = ChartSpec(
+            title="Control Chart",
+            subtitle=self.chart_type,
+            chart_type="control_chart",
+            x_axis={"label": "Sample", "grid": True},
+            y_axis={"label": "Value", "grid": True},
+        )
+        spec.add_trace(x, self.data_points, name="Data", trace_type="line", color="", role="data")
+
+        ooc_idx = [p["index"] for p in self.out_of_control]
+        if ooc_idx:
+            spec.add_marker(ooc_idx, color="", label="Out of Control", role="out_of_control")
+
+        spec.add_reference_line(lim.ucl, color="", label="UCL", role="control_limit")
+        spec.add_reference_line(lim.cl, color="", dash="solid", label="CL", role="centerline")
+        spec.add_reference_line(lim.lcl, color="", label="LCL", role="control_limit")
+        if lim.usl is not None:
+            spec.add_reference_line(lim.usl, color="", dash="dotted", label="USL", role="spec_limit")
+        if lim.lsl is not None:
+            spec.add_reference_line(lim.lsl, color="", dash="dotted", label="LSL", role="spec_limit")
+
+        if lim.ucl > lim.cl > lim.lcl:
+            one_sigma = (lim.ucl - lim.cl) / 3
+            spec.add_zone(lim.cl + 2 * one_sigma, lim.ucl, color="", role="sigma_zone")
+            spec.add_zone(lim.cl + one_sigma, lim.cl + 2 * one_sigma, color="", role="sigma_zone")
+            spec.add_zone(lim.cl - 2 * one_sigma, lim.cl - one_sigma, color="", role="sigma_zone")
+            spec.add_zone(lim.lcl, lim.cl - 2 * one_sigma, color="", role="sigma_zone")
+
+        run_idx = sorted({i for v in self.run_violations for i in v.get("indices", [])} - set(ooc_idx))
+        if run_idx:
+            spec.add_marker(run_idx, color="", symbol="diamond", label="Run Rule", role="run_rule")
+
+        return spec
+
     @property
     def n_ooc(self) -> int:
         return len(self.out_of_control)
