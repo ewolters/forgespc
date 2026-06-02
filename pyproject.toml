@@ -20,6 +20,7 @@ classifiers = [
 
 dependencies = [
     "numpy>=1.24",
+    "forgerender",
 ]
 
 [project.optional-dependencies]
