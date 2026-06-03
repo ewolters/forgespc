@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from typing import Optional
 
+from forgerender import ResultMixin
+
 
 @dataclass
 class ControlLimits:
@@ -132,7 +134,7 @@ class ControlChartResult:
 
 
 @dataclass
-class ProcessCapability:
+class ProcessCapability(ResultMixin):
     """Process capability analysis results."""
 
     # Short-term capability (within subgroup variation)

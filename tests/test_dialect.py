@@ -1,7 +1,7 @@
 """forgespc is the capability-dialect witness: ProcessCapability must speak
 the dialect and conform to the engine Result protocol (forgerender)."""
 
-from forgerender import CAPABILITY, ROLE_SPEC_LIMIT, ChartSpec, Result
+from forgerender import CAPABILITY, ROLE_SPEC_LIMIT, ChartSpec, Result, result_registry
 
 from forgespc.models import ProcessCapability
 
@@ -19,6 +19,11 @@ def _cap() -> ProcessCapability:
 
 def test_process_capability_conforms_to_result_protocol():
     assert isinstance(_cap(), Result)
+
+
+def test_importing_forgespc_registers_process_capability():
+    # Importing the package is what populates the engine catalog.
+    assert result_registry().get("ProcessCapability") is ProcessCapability
 
 
 def test_capability_accessor_speaks_the_full_capability_dialect():
