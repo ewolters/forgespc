@@ -176,6 +176,62 @@ class ProcessCapability:
     def to_dict(self) -> dict:
         return asdict(self)
 
+    @property
+    def summary(self) -> str:
+        return (
+            f"Capability: Cp={self.cp:.2f} Cpk={self.cpk:.2f} "
+            f"sigma={self.sigma_level:.2f} DPMO={self.dpmo:.0f}"
+        )
+
+    def capability(self) -> dict:
+        """Capability-dialect view (forgerender.CAPABILITY vocabulary).
+
+        Normalizes this result's field-name drift onto the shared tokens —
+        e.g. sigma_level -> sigma — so any capability solver reads the same.
+        """
+        return {
+            "usl": self.usl,
+            "lsl": self.lsl,
+            "cp": self.cp,
+            "cpk": self.cpk,
+            "sigma": self.sigma_level,
+            "dpmo": self.dpmo,
+        }
+
+    def to_render(self):
+        """Emit a theme-neutral forgerender.ChartSpec: fitted normal curve
+        with spec limits and the process mean as semantic roles."""
+        import math
+
+        from forgerender import (
+            ROLE_CENTERLINE,
+            ROLE_DATA,
+            ROLE_SPEC_LIMIT,
+            ChartSpec,
+        )
+
+        sigma = self.sigma_overall or self.sigma_within
+        lo = min(self.lsl, self.mean - 4 * sigma)
+        hi = max(self.usl, self.mean + 4 * sigma)
+        n = 80
+        xs = [lo + (hi - lo) * i / (n - 1) for i in range(n)]
+        ys = [
+            math.exp(-0.5 * ((x - self.mean) / sigma) ** 2)
+            / (sigma * math.sqrt(2 * math.pi))
+            for x in xs
+        ]
+        spec = ChartSpec(
+            title="Process Capability",
+            chart_type="capability",
+            x_axis={"label": "Value", "grid": True},
+            y_axis={"label": "Density", "grid": True},
+        )
+        spec.add_trace(xs, ys, name="Distribution", trace_type="area", color="", role=ROLE_DATA)
+        spec.add_reference_line(self.mean, color="", dash="solid", label="Mean", role=ROLE_CENTERLINE)
+        spec.add_reference_line(self.usl, color="", dash="dotted", label="USL", role=ROLE_SPEC_LIMIT)
+        spec.add_reference_line(self.lsl, color="", dash="dotted", label="LSL", role=ROLE_SPEC_LIMIT)
+        return spec
+
 
 @dataclass
 class StatisticalSummary:
