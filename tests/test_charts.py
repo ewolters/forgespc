@@ -159,3 +159,18 @@ class TestNPChart:
         defectives = [4, 5, 4, 5, 4, 5, 4, 5, 4, 5]
         result = np_chart(defectives, sample_size=100)
         assert result.in_control
+
+
+class TestToRenderRoles:
+    def test_emitted_roles_are_canonical(self):
+        from forgerender import ROLES
+        data = [10.1, 9.8, 10.3, 9.9, 10.0, 10.2, 9.7, 15.0, 10.1, 9.9, 10.4, 9.8]
+        spec = individuals_moving_range_chart(data, usl=12.0, lsl=8.0).to_render()
+        roles = (
+            [t.role for t in spec.traces]
+            + [r.role for r in spec.reference_lines]
+            + [z.role for z in spec.zones]
+            + [m.role for m in spec.markers]
+        )
+        assert roles, "no roles emitted"
+        assert set(roles) <= ROLES, f"non-canonical roles: {set(roles) - ROLES}"
