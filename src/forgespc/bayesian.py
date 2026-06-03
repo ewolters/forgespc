@@ -22,6 +22,8 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from forgerender import ResultMixin
+
 
 # =============================================================================
 # Normal-Inverse-Gamma conjugate posterior
@@ -84,7 +86,7 @@ def cpk_from_params(
 
 
 @dataclass
-class BayesianCapabilityResult:
+class BayesianCapabilityResult(ResultMixin):
     """Full Bayesian capability analysis result.
 
     Contains both Bayesian (posterior median + CI) and frequentist
@@ -335,7 +337,7 @@ class ChangeSegment:
 
 
 @dataclass
-class BayesianChangepointResult:
+class BayesianChangepointResult(ResultMixin):
     """Result from Bayesian changepoint detection."""
 
     changepoints: list[int]
@@ -467,7 +469,7 @@ def bayesian_changepoint(
 
 
 @dataclass
-class BayesianControlResult:
+class BayesianControlResult(ResultMixin):
     """Bayesian control chart — posterior predictive limits."""
 
     data_points: list[float]

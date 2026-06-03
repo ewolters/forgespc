@@ -26,6 +26,32 @@ def test_importing_forgespc_registers_process_capability():
     assert result_registry().get("ProcessCapability") is ProcessCapability
 
 
+def test_all_forgespc_solver_results_register_in_the_catalog():
+    import forgespc.advanced as adv
+    import forgespc.bayesian as bay
+    import forgespc.conformal as con
+    import forgespc.gage as gage
+    from forgespc import models
+
+    expected = {
+        "CUSUMResult": adv.CUSUMResult,
+        "EWMAResult": adv.EWMAResult,
+        "MEWMAResult": adv.MEWMAResult,
+        "GeneralizedVarianceResult": adv.GeneralizedVarianceResult,
+        "BayesianCapabilityResult": bay.BayesianCapabilityResult,
+        "BayesianChangepointResult": bay.BayesianChangepointResult,
+        "BayesianControlResult": bay.BayesianControlResult,
+        "ConformalControlResult": con.ConformalControlResult,
+        "EntropySPCResult": con.EntropySPCResult,
+        "GageRRResult": gage.GageRRResult,
+        "ControlChartResult": models.ControlChartResult,
+        "StatisticalSummary": models.StatisticalSummary,
+    }
+    reg = result_registry()
+    for name, cls in expected.items():
+        assert reg.get(name) is cls, name
+
+
 def test_capability_accessor_speaks_the_full_capability_dialect():
     # Drift guard: renaming/dropping a dialect field fails the build.
     assert set(_cap().capability().keys()) == CAPABILITY

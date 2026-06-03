@@ -20,6 +20,8 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from forgerender import ResultMixin
+
 
 # =============================================================================
 # Conformal Control Chart
@@ -27,7 +29,7 @@ import numpy as np
 
 
 @dataclass
-class ConformalControlResult:
+class ConformalControlResult(ResultMixin):
     """Conformal control chart result."""
 
     data_points: list[float]
@@ -113,7 +115,7 @@ def conformal_control(
 
 
 @dataclass
-class EntropySPCResult:
+class EntropySPCResult(ResultMixin):
     """Entropy-based SPC result."""
 
     entropy_values: list[float]

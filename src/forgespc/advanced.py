@@ -12,6 +12,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from forgerender import ResultMixin
+
 try:
     import numpy as np
 except ImportError:
@@ -26,7 +28,7 @@ from .models import ControlChartResult, ControlLimits
 
 
 @dataclass
-class CUSUMResult:
+class CUSUMResult(ResultMixin):
     """CUSUM chart result with full state for visualization."""
 
     cusum_pos: list[float]
@@ -126,7 +128,7 @@ def cusum_chart(
 
 
 @dataclass
-class EWMAResult:
+class EWMAResult(ResultMixin):
     """EWMA chart result with full state for visualization."""
 
     ewma_values: list[float]
@@ -234,7 +236,7 @@ def ewma_chart(
 
 
 @dataclass
-class MEWMAResult:
+class MEWMAResult(ResultMixin):
     """MEWMA chart result with T² statistics."""
 
     t2_values: list[float]
@@ -343,7 +345,7 @@ def mewma_chart(
 
 
 @dataclass
-class GeneralizedVarianceResult:
+class GeneralizedVarianceResult(ResultMixin):
     """Generalized variance chart result."""
 
     gv_values: list[float]

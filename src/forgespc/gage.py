@@ -8,6 +8,8 @@ from __future__ import annotations
 import math
 from dataclasses import asdict, dataclass
 
+from forgerender import ResultMixin
+
 from .models import ControlChartResult, ControlLimits
 
 
@@ -140,7 +142,7 @@ def hotelling_t_squared_chart(
 
 
 @dataclass
-class GageRRResult:
+class GageRRResult(ResultMixin):
     """Gage R&R (Crossed) study results."""
 
     # Variance components

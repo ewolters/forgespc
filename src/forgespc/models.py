@@ -22,7 +22,7 @@ class ControlLimits:
 
 
 @dataclass
-class ControlChartResult:
+class ControlChartResult(ResultMixin):
     """Result from control chart analysis."""
 
     chart_type: str
@@ -236,7 +236,7 @@ class ProcessCapability(ResultMixin):
 
 
 @dataclass
-class StatisticalSummary:
+class StatisticalSummary(ResultMixin):
     """Statistical summary of a dataset."""
 
     n: int
