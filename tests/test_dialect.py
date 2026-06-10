@@ -1,7 +1,7 @@
 """forgespc is the capability-dialect witness: ProcessCapability must speak
-the dialect and conform to the engine Result protocol (forgerender)."""
+the dialect and conform to the engine Result protocol (forgecore)."""
 
-from forgerender import CAPABILITY, ROLE_SPEC_LIMIT, ChartSpec, Result, result_registry
+from forgecore import CAPABILITY, ROLE_SPEC_LIMIT, ChartSpec, Result, result_registry
 
 from forgespc.models import ProcessCapability
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from typing import Optional
 
-from forgerender import ResultMixin
+from forgecore import ResultMixin
 
 
 @dataclass
@@ -47,12 +47,12 @@ class ControlChartResult(ResultMixin):
         return len(self.data_points)
 
     def to_render(self):
-        """Emit a theme-neutral forgerender.ChartSpec for this control chart.
+        """Emit a theme-neutral forgecore.ChartSpec for this control chart.
 
         Semantic roles (not literal colors) carry meaning; the consumer's theme
-        maps role -> color. Depends only on forgerender, never on forgeviz.
+        maps role -> color. Depends only on forgecore, never on forgeviz.
         """
-        from forgerender import (
+        from forgecore import (
             ROLE_CENTERLINE,
             ROLE_CONTROL_LIMIT,
             ROLE_DATA,
@@ -186,7 +186,7 @@ class ProcessCapability(ResultMixin):
         )
 
     def capability(self) -> dict:
-        """Capability-dialect view (forgerender.CAPABILITY vocabulary).
+        """Capability-dialect view (forgecore.CAPABILITY vocabulary).
 
         Normalizes this result's field-name drift onto the shared tokens —
         e.g. sigma_level -> sigma — so any capability solver reads the same.
@@ -201,11 +201,11 @@ class ProcessCapability(ResultMixin):
         }
 
     def to_render(self):
-        """Emit a theme-neutral forgerender.ChartSpec: fitted normal curve
+        """Emit a theme-neutral forgecore.ChartSpec: fitted normal curve
         with spec limits and the process mean as semantic roles."""
         import math
 
-        from forgerender import (
+        from forgecore import (
             ROLE_CENTERLINE,
             ROLE_DATA,
             ROLE_SPEC_LIMIT,

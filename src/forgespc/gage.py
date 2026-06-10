@@ -8,7 +8,7 @@ from __future__ import annotations
 import math
 from dataclasses import asdict, dataclass
 
-from forgerender import ResultMixin
+from forgecore import ResultMixin
 
 from .models import ControlChartResult, ControlLimits
 

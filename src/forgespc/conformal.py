@@ -20,7 +20,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from forgerender import ResultMixin
+from forgecore import ResultMixin
 
 
 # =============================================================================

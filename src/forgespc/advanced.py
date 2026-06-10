@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from forgerender import ResultMixin
+from forgecore import ResultMixin
 
 try:
     import numpy as np

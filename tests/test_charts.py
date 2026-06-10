@@ -163,7 +163,7 @@ class TestNPChart:
 
 class TestToRenderRoles:
     def test_emitted_roles_are_canonical(self):
-        from forgerender import ROLES
+        from forgecore import ROLES
         data = [10.1, 9.8, 10.3, 9.9, 10.0, 10.2, 9.7, 15.0, 10.1, 9.9, 10.4, 9.8]
         spec = individuals_moving_range_chart(data, usl=12.0, lsl=8.0).to_render()
         roles = (
