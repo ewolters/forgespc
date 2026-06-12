@@ -46,6 +46,40 @@ class CUSUMResult(ResultMixin):
     def n_signals(self) -> int:
         return len(self.signals_up) + len(self.signals_down)
 
+    def to_render(self):
+        """Emit a theme-neutral forgecore.ChartSpec carrying both CUSUM sides.
+
+        The statistics are standardized (z = (x - target)/sigma) and signal
+        where cusum > h, so the decision interval on the chart is h directly,
+        never h * sigma.
+        """
+        from forgecore import (
+            ROLE_CENTERLINE,
+            ROLE_CONTROL_LIMIT,
+            ROLE_DATA,
+            ROLE_OUT_OF_CONTROL,
+            ChartSpec,
+        )
+
+        x = list(range(1, self.n + 1))
+        spec = ChartSpec(
+            title="Control Chart",
+            subtitle="CUSUM",
+            chart_type="control_chart",
+            x_axis={"label": "Sample", "grid": True},
+            y_axis={"label": "Cumulative Sum (sigma units)", "grid": True},
+        )
+        spec.add_trace(x, self.cusum_pos, name="CUSUM+", trace_type="line", color="", role=ROLE_DATA)
+        spec.add_trace(x, self.cusum_neg, name="CUSUM-", trace_type="line", color="", role=ROLE_DATA)
+
+        signals = sorted(set(self.signals_up) | set(self.signals_down))
+        if signals:
+            spec.add_marker(signals, color="", label="Signal", role=ROLE_OUT_OF_CONTROL)
+
+        spec.add_reference_line(self.h, color="", label="UCL", role=ROLE_CONTROL_LIMIT)
+        spec.add_reference_line(0.0, color="", dash="solid", label="CL", role=ROLE_CENTERLINE)
+        return spec
+
     def to_chart_result(self) -> ControlChartResult:
         """Convert to standard ControlChartResult."""
         ooc = [
@@ -143,6 +177,10 @@ class EWMAResult(ResultMixin):
     n: int
     out_of_control_indices: list[int]
     in_control: bool
+
+    def to_render(self):
+        """Theme-neutral ChartSpec via the canonical ControlChartResult conversion."""
+        return self.to_chart_result().to_render()
 
     def to_chart_result(self) -> ControlChartResult:
         ooc = [
@@ -247,6 +285,10 @@ class MEWMAResult(ResultMixin):
     n: int
     out_of_control_indices: list[int]
     in_control: bool
+
+    def to_render(self):
+        """Theme-neutral ChartSpec via the canonical ControlChartResult conversion."""
+        return self.to_chart_result().to_render()
 
     def to_chart_result(self) -> ControlChartResult:
         ooc = [
@@ -356,6 +398,10 @@ class GeneralizedVarianceResult(ResultMixin):
     subgroup_size: int
     out_of_control_indices: list[int]
     in_control: bool
+
+    def to_render(self):
+        """Theme-neutral ChartSpec via the canonical ControlChartResult conversion."""
+        return self.to_chart_result().to_render()
 
     def to_chart_result(self) -> ControlChartResult:
         ooc = [
