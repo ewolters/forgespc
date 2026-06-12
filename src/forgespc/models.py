@@ -99,6 +99,14 @@ class ControlChartResult(ResultMixin):
 
         return spec
 
+    def views(self):
+        """The complete portrait: primary chart plus the paired secondary
+        (I-MR, X-bar/R, X-bar/S) when the solver composed one."""
+        specs = [self.to_render()]
+        if self.secondary_chart:
+            specs.append(self.secondary_chart.to_render())
+        return specs
+
     @property
     def n_ooc(self) -> int:
         return len(self.out_of_control)

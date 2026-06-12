@@ -37,6 +37,31 @@ def test_to_render_returns_chartspec_with_neutral_colors_and_roles():
     assert "out_of_control" in marker_roles
 
 
+def test_views_composes_the_imr_pair_from_secondary_chart():
+    mr = ControlChartResult(
+        chart_type="MR",
+        data_points=[0.3, 0.2, 0.6, 0.8],
+        limits=ControlLimits(ucl=1.2, cl=0.4, lcl=0.0),
+        out_of_control=[],
+        run_violations=[],
+        in_control=True,
+        summary="MR in control",
+    )
+    primary = _result()
+    primary.secondary_chart = mr
+
+    views = primary.views()
+
+    assert [v.subtitle for v in views] == ["I-MR", "MR"]
+    # each chart is the result's own self-portrait, drawn from its own fields
+    assert views[1].to_dict()["reference_lines"][0]["value"] == 1.2
+
+
+def test_views_is_single_chart_without_secondary():
+    views = _result().views()
+    assert [v.subtitle for v in views] == ["I-MR"]
+
+
 def _cusum():
     return CUSUMResult(
         cusum_pos=[0.0, 1.2, 2.4, 3.6, 5.5],
