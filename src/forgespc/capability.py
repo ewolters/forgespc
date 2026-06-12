@@ -170,6 +170,26 @@ def calculate_capability(
         dpmo_overall=dpmo_overall,
         yield_overall=yield_overall,
         bayesian_shadow=bayesian_shadow,
+        data=list(data),
+    )
+
+
+def capability_from_dataset(dataset, series: str | None = None, **kwargs) -> ProcessCapability:
+    """Adapt a forgecore.Dataset into the untouched capability solver.
+
+    Spec limits come from dataset.meta (usl/lsl/target); the sample comes from
+    the named series (default: the first). Extra kwargs pass through.
+    """
+    s = dataset.get(series) if series else (dataset.series[0] if dataset.series else None)
+    if s is None:
+        raise ValueError(f"dataset has no series {series!r}")
+    meta = dataset.meta
+    return calculate_capability(
+        s.values,
+        usl=meta["usl"],
+        lsl=meta["lsl"],
+        target=meta.get("target"),
+        **kwargs,
     )
 
 

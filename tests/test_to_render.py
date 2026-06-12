@@ -4,6 +4,7 @@ from forgespc.advanced import (
     GeneralizedVarianceResult,
     MEWMAResult,
 )
+from forgespc.capability import calculate_capability
 from forgespc.models import ControlChartResult, ControlLimits
 
 
@@ -60,6 +61,28 @@ def test_views_composes_the_imr_pair_from_secondary_chart():
 def test_views_is_single_chart_without_secondary():
     views = _result().views()
     assert [v.subtitle for v in views] == ["I-MR"]
+
+
+def test_capability_views_compose_histogram_and_probability_plot_from_own_data():
+    cap = calculate_capability(
+        [5.1, 5.0, 5.2, 4.9, 5.1, 5.3, 5.0, 5.1, 4.8, 5.2], usl=5.5, lsl=4.5
+    )
+    views = cap.views()
+
+    assert [v.chart_type for v in views] == ["capability_histogram", "probability_plot"]
+    hist = views[0].to_dict()
+    assert {r["role"] for r in hist["reference_lines"]} >= {"spec_limit", "centerline"}
+    assert all(t["color"] == "" for t in hist["traces"])  # theme-neutral
+    prob = views[1].to_dict()
+    assert len(prob["traces"][0]["y"]) == 10  # every sample point plotted
+
+
+def test_capability_views_fall_back_to_fitted_curve_without_data():
+    cap = calculate_capability(
+        [5.1, 5.0, 5.2, 4.9, 5.1, 5.3, 5.0, 5.1, 4.8, 5.2], usl=5.5, lsl=4.5
+    )
+    cap.data = None
+    assert [v.chart_type for v in cap.views()] == ["capability"]
 
 
 def _cusum():

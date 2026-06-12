@@ -182,6 +182,7 @@ class ProcessCapability(ResultMixin):
     dpmo_overall: float | None = None  # DPMO using overall sigma (Pp/Ppk basis)
     yield_overall: float | None = None  # Yield using overall sigma
     bayesian_shadow: dict | None = None  # Bayesian capability results if requested
+    data: list[float] | None = None  # raw sample — views() draws from it (§5b)
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -240,6 +241,66 @@ class ProcessCapability(ResultMixin):
         spec.add_reference_line(self.mean, color="", dash="solid", label="Mean", role=ROLE_CENTERLINE)
         spec.add_reference_line(self.usl, color="", dash="dotted", label="USL", role=ROLE_SPEC_LIMIT)
         spec.add_reference_line(self.lsl, color="", dash="dotted", label="LSL", role=ROLE_SPEC_LIMIT)
+        return spec
+
+    def views(self):
+        """The complete portrait: histogram + normal probability plot when the
+        result carries its sample; the fitted-curve summary otherwise."""
+        if not self.data:
+            return [self.to_render()]
+        return [self._histogram_view(), self._probability_view()]
+
+    def _histogram_view(self):
+        import math
+
+        from forgecore import ROLE_CENTERLINE, ROLE_DATA, ROLE_SPEC_LIMIT, ChartSpec
+
+        data = self.data
+        n_bins = max(5, min(20, round(math.sqrt(len(data)))))
+        lo, hi = min(data), max(data)
+        width = (hi - lo) / n_bins or 1.0
+        counts = [0] * n_bins
+        for v in data:
+            counts[min(int((v - lo) / width), n_bins - 1)] += 1
+        centers = [lo + width * (i + 0.5) for i in range(n_bins)]
+
+        spec = ChartSpec(
+            title="Process Capability",
+            subtitle=f"Cp={self.cp:.2f} Cpk={self.cpk:.2f}",
+            chart_type="capability_histogram",
+            x_axis={"label": "Value", "grid": True},
+            y_axis={"label": "Count", "grid": True},
+        )
+        spec.add_trace(centers, counts, name="Sample", trace_type="bar", color="", role=ROLE_DATA)
+        spec.add_reference_line(self.mean, color="", dash="solid", label="Mean", role=ROLE_CENTERLINE)
+        spec.add_reference_line(self.usl, color="", dash="dotted", label="USL", role=ROLE_SPEC_LIMIT)
+        spec.add_reference_line(self.lsl, color="", dash="dotted", label="LSL", role=ROLE_SPEC_LIMIT)
+        if self.target is not None:
+            spec.add_reference_line(self.target, color="", dash="dashed", label="Target", role=ROLE_CENTERLINE)
+        return spec
+
+    def _probability_view(self):
+        from statistics import NormalDist
+
+        from forgecore import ROLE_CENTERLINE, ROLE_DATA, ChartSpec
+
+        sorted_d = sorted(self.data)
+        n = len(sorted_d)
+        nd = NormalDist()
+        # Blom plotting positions
+        theoretical = [nd.inv_cdf((i - 0.375) / (n + 0.25)) for i in range(1, n + 1)]
+
+        spec = ChartSpec(
+            title="Normal Probability Plot",
+            chart_type="probability_plot",
+            x_axis={"label": "Theoretical Quantiles", "grid": True},
+            y_axis={"label": "Sample Quantiles", "grid": True},
+        )
+        spec.add_trace(theoretical, sorted_d, name="Data", trace_type="scatter", color="", role=ROLE_DATA)
+        sigma = self.sigma_overall or self.sigma_within
+        fit_y = [self.mean + sigma * t for t in (theoretical[0], theoretical[-1])]
+        spec.add_trace([theoretical[0], theoretical[-1]], fit_y, name="Fit",
+                       trace_type="line", color="", dash="dashed", role=ROLE_CENTERLINE)
         return spec
 
 
