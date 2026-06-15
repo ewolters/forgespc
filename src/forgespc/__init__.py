@@ -18,6 +18,8 @@ Advanced (requires numpy):
 
 __version__ = "0.1.0"
 
+from . import capability  # noqa: F401 — registers capability_from_dataset as an engine solver
+
 __all__ = [
     # models
     "ControlLimits",

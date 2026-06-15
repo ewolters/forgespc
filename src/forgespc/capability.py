@@ -8,6 +8,8 @@ import math
 import statistics
 from typing import Literal
 
+from forgecore import solver
+
 from .constants import CONTROL_CHART_CONSTANTS, IMR_CONSTANTS
 from .models import ProcessCapability
 
@@ -174,6 +176,8 @@ def calculate_capability(
     )
 
 
+@solver("capability_from_dataset", consumes={"dataset"}, produces=("ProcessCapability",),
+        dialects={"capability"})
 def capability_from_dataset(dataset, series: str | None = None, **kwargs) -> ProcessCapability:
     """Adapt a forgecore.Dataset into the untouched capability solver.
 
