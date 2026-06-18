@@ -8,8 +8,6 @@ from __future__ import annotations
 import math
 from dataclasses import asdict, dataclass
 
-from forgecore import ResultMixin
-
 from .models import ControlChartResult, ControlLimits
 
 
@@ -142,8 +140,14 @@ def hotelling_t_squared_chart(
 
 
 @dataclass
-class GageRRResult(ResultMixin):
-    """Gage R&R (Crossed) study results."""
+class GageRRResult:
+    """Gage R&R (Crossed) study results.
+
+    Plain dataclass (not a contract result): SVEND's gage path uses
+    forgestat.msa.gage_rr.GageRRResult, which owns the "GageRRResult" engine
+    registry name. This forgespc study result stays out of the registry to
+    avoid the cross-module name collision.
+    """
 
     # Variance components
     var_repeatability: float

@@ -38,7 +38,6 @@ def test_all_forgespc_solver_results_register_in_the_catalog():
     import forgespc.advanced as adv
     import forgespc.bayesian as bay
     import forgespc.conformal as con
-    import forgespc.gage as gage
     from forgespc import models
 
     expected = {
@@ -51,7 +50,8 @@ def test_all_forgespc_solver_results_register_in_the_catalog():
         "BayesianControlResult": bay.BayesianControlResult,
         "ConformalControlResult": con.ConformalControlResult,
         "EntropySPCResult": con.EntropySPCResult,
-        "GageRRResult": gage.GageRRResult,
+        # GageRRResult de-registered: forgestat.msa.gage_rr owns that engine name
+        # (SVEND's gage path); forgespc's study result stays a plain dataclass.
         "ControlChartResult": models.ControlChartResult,
         "StatisticalSummary": models.StatisticalSummary,
     }
