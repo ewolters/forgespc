@@ -22,7 +22,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from forgecore import ResultMixin
+from forgecore import ROLE_CENTERLINE, ROLE_CONTROL_LIMIT, ROLE_DATA, ROLE_SPEC_LIMIT, ChartSpec, ResultMixin
 
 
 # =============================================================================
@@ -138,6 +138,31 @@ class BayesianCapabilityResult(ResultMixin):
     usl: float | None = None
     lsl: float | None = None
     target: float | None = None
+
+    @property
+    def summary(self) -> str:
+        return (f"Bayesian Cpk median={self.cpk_median:.3f}, "
+                f"P(Cpk>1.33)={self.p_gt_133:.1%}"
+                f"{f'; {self.verdict}' if self.verdict else ''}")
+
+    def to_render(self) -> ChartSpec:
+        """Posterior Cpk histogram from the full sample, with the median, 95%
+        credible interval, and the 1.33 target as reference lines. Falls back
+        to a CI-only marker when the posterior sample wasn't retained."""
+        spec = ChartSpec(title="Bayesian Cpk Posterior", chart_type="bayesian_capability",
+                         x_axis={"label": "Cpk"}, y_axis={"label": "Density"})
+        if self.cpk_samples:
+            counts, edges = np.histogram(self.cpk_samples, bins=30)
+            centers = [f"{(edges[i] + edges[i + 1]) / 2:.3g}" for i in range(len(counts))]
+            spec.add_trace(centers, counts.tolist(), trace_type="bar", color="", role=ROLE_DATA)
+        spec.add_reference_line(1.33, axis="x", dash="dashed", label="Target Cpk=1.33", role=ROLE_SPEC_LIMIT)
+        spec.add_reference_line(self.cpk_median, axis="x", dash="solid",
+                                label=f"Median={self.cpk_median:.3f}", role=ROLE_CENTERLINE)
+        if self.cpk_ci:
+            lo, hi = self.cpk_ci
+            spec.add_reference_line(lo, axis="x", dash="dotted", label=f"CI Low={lo:.3f}", role=ROLE_CONTROL_LIMIT)
+            spec.add_reference_line(hi, axis="x", dash="dotted", label=f"CI High={hi:.3f}", role=ROLE_CONTROL_LIMIT)
+        return spec
 
 
 def bayesian_capability(

@@ -8,6 +8,18 @@ from forgecore.testing import assert_result_conforms, assert_solver_conforms
 from forgespc.models import ProcessCapability
 
 
+def test_bayesian_capability_conforms_and_renders_posterior():
+    from forgespc.bayesian import bayesian_capability
+
+    data = [50.0, 50.5, 49.8, 50.2, 49.9, 50.1, 50.3, 49.7, 50.0, 50.4,
+            49.6, 50.2, 50.1, 49.9, 50.3, 50.0, 49.8, 50.2, 50.1, 49.9]
+    result = bayesian_capability(data, usl=53.0, lsl=47.0)
+    assert_result_conforms(result)
+    spec = result.to_render()
+    assert spec.chart_type == "bayesian_capability"
+    assert len(spec.traces) >= 1  # posterior histogram of cpk_samples
+
+
 def _cap() -> ProcessCapability:
     return ProcessCapability(
         cp=1.33, cpk=1.0, cpu=1.0, cpl=1.66,
